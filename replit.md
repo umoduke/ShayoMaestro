@@ -16,6 +16,29 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Artifacts
+
+### Drinks Store Mobile App (`artifacts/drinks-store`)
+- **Type**: Expo (React Native) — iOS & Android
+- **Name**: Sip & Chill
+- **Preview**: `/`
+- **State**: AsyncStorage (no backend, fully local)
+- **Features**:
+  - Home screen with featured banner, categories, search
+  - Product listing with 12 drinks across 6 categories
+  - Product detail page with size/quantity picker, ingredients
+  - Shopping cart with quantity management
+  - Checkout flow with delivery + payment form, order confirmation
+  - User auth (sign up / login, stored locally)
+  - Favorites (heart icon, persisted)
+  - Order history with status tracking
+- **Contexts**: CartContext, AuthContext, FavoritesContext, OrdersContext
+- **Colors**: Sky blue (#0ea5e9) primary, orange (#f97316) accent — light + dark
+
+### API Server (`artifacts/api-server`)
+- Express 5 + TypeScript backend
+- Health check route at `/api/healthz`
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

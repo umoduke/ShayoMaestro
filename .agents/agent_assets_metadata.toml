@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "fhBUhMGpjuSPW5RdaetGR"
+uri = "file://artifacts/drinks-store/assets/images/icon.png"
+type = "image"
+title = "drinks store app icon"
+
+[[generated]]
+id = "feOxMjCaljFQhy3kguGQZ"
+uri = "file://artifacts/drinks-store/assets/images/hero_banner.png"
+type = "image"
+title = "hero banner drinks"
+
+[[generated]]
+id = "36_Nss8RnmvS3I3siyj5u"
+uri = "file://artifacts/drinks-store/assets/images/category_juices.png"
+type = "image"
+title = "juice category"
+
+[[generated]]
+id = "zBC1QhhUrpPsEvUvWdF6t"
+uri = "file://artifacts/drinks-store/assets/images/category_energy.png"
+type = "image"
+title = "energy drinks category"
