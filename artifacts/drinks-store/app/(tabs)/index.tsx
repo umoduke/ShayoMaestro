@@ -31,7 +31,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 import productImages from "@/assets/images/productImages";
 
-const ASL_LOGO = require("@/assets/images/asl-logo.png");
+const ASL_LOGO = require("@/assets/images/asl-logo.webp");
 
 export default function HomeScreen() {
   const colors = useColors();
