@@ -45,7 +45,15 @@ function getAppName() {
   }
 }
 
+const ALLOWED_PLATFORMS = new Set(["ios", "android"]);
+
 function serveManifest(platform, res) {
+  if (!ALLOWED_PLATFORMS.has(platform)) {
+    res.writeHead(400, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "Invalid platform" }));
+    return;
+  }
+
   const manifestPath = path.join(STATIC_ROOT, platform, "manifest.json");
 
   if (!fs.existsSync(manifestPath)) {
@@ -82,10 +90,14 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
 }
 
 function serveStaticFile(urlPath, res) {
-  const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const filePath = path.join(STATIC_ROOT, safePath);
+  const normalised = path.normalize(urlPath);
+  const filePath = path.resolve(STATIC_ROOT, normalised.replace(/^[/\\]+/, ""));
 
-  if (!filePath.startsWith(STATIC_ROOT)) {
+  const staticRootWithSep = STATIC_ROOT.endsWith(path.sep)
+    ? STATIC_ROOT
+    : STATIC_ROOT + path.sep;
+
+  if (filePath !== STATIC_ROOT && !filePath.startsWith(staticRootWithSep)) {
     res.writeHead(403);
     res.end("Forbidden");
     return;
@@ -100,7 +112,11 @@ function serveStaticFile(urlPath, res) {
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
   const content = fs.readFileSync(filePath);
-  res.writeHead(200, { "content-type": contentType });
+  res.writeHead(200, {
+    "content-type": contentType,
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+  });
   res.end(content);
 }
 
