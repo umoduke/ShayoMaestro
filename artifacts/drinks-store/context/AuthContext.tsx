@@ -5,6 +5,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  isAdmin: boolean;
 }
 
 interface AuthContextType {
@@ -16,8 +17,10 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
 const USER_KEY = "drinks_store_user";
+
+const ADMIN_EMAIL = "admin@asl.com";
+const ADMIN_PASSWORD = "ASLadmin2026";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -41,10 +44,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!email || !password) return { success: false, error: "Please fill in all fields" };
       if (!email.includes("@")) return { success: false, error: "Invalid email address" };
       if (password.length < 6) return { success: false, error: "Password must be at least 6 characters" };
+
+      const isAdmin =
+        email.toLowerCase().trim() === ADMIN_EMAIL && password === ADMIN_PASSWORD;
+
       const newUser: User = {
-        id: Date.now().toString(),
-        name: email.split("@")[0],
-        email,
+        id: isAdmin ? "admin" : Date.now().toString(),
+        name: isAdmin ? "Admin" : email.split("@")[0],
+        email: email.toLowerCase().trim(),
+        isAdmin,
       };
       setUser(newUser);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(newUser));
@@ -67,7 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const newUser: User = {
         id: Date.now().toString(),
         name,
-        email,
+        email: email.toLowerCase().trim(),
+        isAdmin: false,
       };
       setUser(newUser);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(newUser));

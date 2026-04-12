@@ -18,6 +18,7 @@ import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 import { OrdersProvider } from "@/context/OrdersContext";
+import { ProductsProvider } from "@/context/ProductsContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,6 +32,7 @@ function RootLayoutNav() {
       <Stack.Screen name="checkout" options={{ headerShown: false }} />
       <Stack.Screen name="auth/login" options={{ headerShown: false }} />
       <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
+      <Stack.Screen name="admin" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -58,13 +60,15 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <AuthProvider>
-                <CartProvider>
-                  <FavoritesProvider>
-                    <OrdersProvider>
-                      <RootLayoutNav />
-                    </OrdersProvider>
-                  </FavoritesProvider>
-                </CartProvider>
+                <ProductsProvider>
+                  <CartProvider>
+                    <FavoritesProvider>
+                      <OrdersProvider>
+                        <RootLayoutNav />
+                      </OrdersProvider>
+                    </FavoritesProvider>
+                  </CartProvider>
+                </ProductsProvider>
               </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

@@ -35,8 +35,18 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
   - Order history with status tracking
 - **Product Images**: AI-generated bottle photography in `assets/images/` (casamigos-blanco.png, casamigos-reposado.png, clase-azul-anejo.png, clase-azul-reposado.png)
 - **Logo**: AI-generated ASL brand logo in `assets/images/asl-logo.png`
-- **Contexts**: CartContext, AuthContext, FavoritesContext, OrdersContext
+- **Contexts**: CartContext, AuthContext, FavoritesContext, OrdersContext, ProductsContext
 - **Theme**: Dark luxury gold — dark bg `#0d0b08`, gold primary `#d4a843`, cream bg (light: `#fdf8f0`)
+- **Admin System**:
+  - Credentials: `admin@asl.com` / `ASLadmin2026`
+  - Admin flag `isAdmin: boolean` on `User` type in AuthContext
+  - Admin Panel accessible from Profile screen when logged in as admin
+  - Admin Dashboard: stats (products, orders, revenue, pending), quick actions, recent orders
+  - Product Management (`/admin/products`): list all products with edit/delete, FAB to add new
+  - Product Form (`/admin/product-form`): add or edit product — name, category, price, description, image URL, origin, ABV, tags, colors
+  - Order Management (`/admin/orders`): filter by status, expand order to see items/address/payment, update status (processing/confirmed/shipped/delivered/cancelled), remove order
+  - ProductsContext: dynamic CRUD with AsyncStorage persistence (`asl_products_v1`), initialized from DRINKS defaults
+  - `getProductImage(id, imageUri)` helper supports both local bundled images and remote URLs for admin-added products
 
 ### API Server (`artifacts/api-server`)
 - Express 5 + TypeScript backend

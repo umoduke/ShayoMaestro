@@ -210,6 +210,20 @@ export default function ProfileScreen() {
           onPress={() => {}}
         />
 
+        {user.isAdmin && (
+          <>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: 8 }]}>
+              ADMINISTRATION
+            </Text>
+            <MenuItem
+              icon="settings"
+              label="Admin Panel"
+              value="Manage store"
+              onPress={() => router.push("/admin" as any)}
+            />
+          </>
+        )}
+
         <View style={{ marginTop: 16 }}>
           <MenuItem
             icon="log-out"

@@ -20,9 +20,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
-import { getDrinkById, formatPrice } from "@/data/drinks";
+import { formatPrice } from "@/data/drinks";
 import { useColors } from "@/hooks/useColors";
-import productImages from "@/assets/images/productImages";
+import { getProductImage } from "@/assets/images/productImages";
+import { useProducts } from "@/context/ProductsContext";
 
 export default function DrinkDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,7 +31,8 @@ export default function DrinkDetailScreen() {
   const insets = useSafeAreaInsets();
   const { addItem } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
-  const drink = getDrinkById(id);
+  const { getProductById } = useProducts();
+  const drink = getProductById(id);
   const [selectedSize, setSelectedSize] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const btnScale = useSharedValue(1);
@@ -126,7 +128,7 @@ export default function DrinkDetailScreen() {
           {/* Bottle Image */}
           <View style={styles.heroImageContainer}>
             <Image
-              source={productImages[drink.id]}
+              source={getProductImage(drink.id, drink.imageUri)}
               style={styles.heroImage}
               resizeMode="contain"
             />

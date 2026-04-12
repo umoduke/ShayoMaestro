@@ -20,16 +20,10 @@ import { SearchBar } from "@/components/SearchBar";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { CartBadge } from "@/components/CartBadge";
-import {
-  DRINKS,
-  FEATURED_DRINKS,
-  DrinkCategory,
-  getDrinksByCategory,
-  searchDrinks,
-  formatPrice,
-} from "@/data/drinks";
+import { DrinkCategory, formatPrice } from "@/data/drinks";
 import { useColors } from "@/hooks/useColors";
-import productImages from "@/assets/images/productImages";
+import { getProductImage } from "@/assets/images/productImages";
+import { useProducts } from "@/context/ProductsContext";
 
 const ASL_LOGO = require("@/assets/images/asl-logo.webp");
 
@@ -38,6 +32,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { itemCount } = useCart();
+  const { products } = useProducts();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<DrinkCategory>("all");
 
@@ -46,11 +41,19 @@ export default function HomeScreen() {
 
   const filteredDrinks =
     searchQuery.length > 0
-      ? searchDrinks(searchQuery)
-      : getDrinksByCategory(selectedCategory);
+      ? products.filter(
+          (d) =>
+            d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            d.shortName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            d.category.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : selectedCategory === "all"
+      ? products
+      : products.filter((d) => d.category === selectedCategory);
 
   const isSearching = searchQuery.length > 0;
-  const featured = FEATURED_DRINKS[0];
+  const featuredProducts = products.filter((d) => d.featured);
+  const featured = featuredProducts[0] ?? products[0];
 
   return (
     <ScrollView
@@ -154,7 +157,7 @@ export default function HomeScreen() {
             >
               {/* Product image on right */}
               <Image
-                source={productImages[featured.id]}
+                source={getProductImage(featured.id, featured.imageUri)}
                 style={styles.bannerImage}
                 resizeMode="contain"
               />
@@ -190,12 +193,12 @@ export default function HomeScreen() {
             </View>
             <FlatList
               horizontal
-              data={FEATURED_DRINKS}
+              data={featuredProducts.length > 0 ? featuredProducts : products.slice(0, 4)}
               keyExtractor={(d) => d.id}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
               renderItem={({ item }) => <DrinkCard drink={item} size="small" />}
-              scrollEnabled={!!FEATURED_DRINKS.length}
+              scrollEnabled
             />
           </View>
 

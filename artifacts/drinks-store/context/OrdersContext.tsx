@@ -7,7 +7,7 @@ export interface Order {
   items: CartItem[];
   total: number;
   date: string;
-  status: "processing" | "shipped" | "delivered";
+  status: "processing" | "confirmed" | "shipped" | "delivered" | "cancelled";
   address: string;
   paymentMethod: string;
   name: string;
@@ -20,6 +20,8 @@ interface OrdersContextType {
     total: number,
     details: { address: string; paymentMethod: string; name: string }
   ) => string;
+  updateOrderStatus: (id: string, status: Order["status"]) => void;
+  removeOrder: (id: string) => void;
 }
 
 const OrdersContext = createContext<OrdersContextType | null>(null);
@@ -55,14 +57,12 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       details: { address: string; paymentMethod: string; name: string }
     ): string => {
       const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-      const statuses: Order["status"][] = ["processing", "shipped", "delivered"];
-      const status = statuses[Math.floor(Math.random() * 2)] as Order["status"];
       const newOrder: Order = {
         id,
         items,
         total,
         date: new Date().toISOString(),
-        status,
+        status: "processing",
         ...details,
       };
       setOrders((prev) => [newOrder, ...prev]);
@@ -71,8 +71,18 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateOrderStatus = useCallback((id: string, status: Order["status"]) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, status } : o))
+    );
+  }, []);
+
+  const removeOrder = useCallback((id: string) => {
+    setOrders((prev) => prev.filter((o) => o.id !== id));
+  }, []);
+
   return (
-    <OrdersContext.Provider value={{ orders, addOrder }}>
+    <OrdersContext.Provider value={{ orders, addOrder, updateOrderStatus, removeOrder }}>
       {children}
     </OrdersContext.Provider>
   );

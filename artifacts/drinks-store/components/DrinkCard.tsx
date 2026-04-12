@@ -19,7 +19,7 @@ import Animated, {
 import { useFavorites } from "@/context/FavoritesContext";
 import { useColors } from "@/hooks/useColors";
 import { Drink, formatPrice } from "@/data/drinks";
-import productImages from "@/assets/images/productImages";
+import { getProductImage } from "@/assets/images/productImages";
 
 interface Props {
   drink: Drink;
@@ -88,7 +88,7 @@ export function DrinkCard({ drink, size = "large" }: Props) {
             ]}
           >
             <Image
-              source={productImages[drink.id]}
+              source={getProductImage(drink.id, drink.imageUri)}
               style={styles.productImage}
               resizeMode="contain"
             />
