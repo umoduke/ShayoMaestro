@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart } from "@/context/CartContext";
 import { useColors } from "@/hooks/useColors";
 
+const formatNaira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
+
 export default function CartScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -49,7 +51,7 @@ export default function CartScreen() {
             Your cart is empty
           </Text>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-            Add drinks to get started
+            Add premium spirits to get started
           </Text>
           <Pressable
             onPress={() => router.push("/(tabs)" as any)}
@@ -59,7 +61,7 @@ export default function CartScreen() {
             ]}
           >
             <Text style={[styles.shopBtnText, { color: colors.primaryForeground }]}>
-              Browse Drinks
+              Browse Spirits
             </Text>
           </Pressable>
         </View>
@@ -68,7 +70,11 @@ export default function CartScreen() {
           <FlatList
             data={items}
             keyExtractor={(i) => `${i.drinkId}-${i.sizeLabel}`}
-            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: bottomInset + 120 }}
+            contentContainerStyle={{
+              padding: 16,
+              gap: 12,
+              paddingBottom: bottomInset + 120,
+            }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
               <View
@@ -81,7 +87,6 @@ export default function CartScreen() {
                   },
                 ]}
               >
-                {/* Color Bar */}
                 <View
                   style={[
                     styles.colorBar,
@@ -96,7 +101,7 @@ export default function CartScreen() {
                   <View style={styles.itemInfo}>
                     <Text
                       style={[styles.itemName, { color: colors.foreground }]}
-                      numberOfLines={1}
+                      numberOfLines={2}
                     >
                       {item.drinkName}
                     </Text>
@@ -104,10 +109,9 @@ export default function CartScreen() {
                       {item.sizeLabel}
                     </Text>
                     <Text style={[styles.itemPrice, { color: item.accentColor }]}>
-                      ${(item.sizePrice * item.quantity).toFixed(2)}
+                      {formatNaira(item.sizePrice * item.quantity)}
                     </Text>
                   </View>
-
                   <View style={styles.itemActions}>
                     <Pressable
                       onPress={() => {
@@ -121,7 +125,6 @@ export default function CartScreen() {
                     >
                       <Feather name="trash-2" size={14} color={colors.destructive} />
                     </Pressable>
-
                     <View
                       style={[
                         styles.qtyRow,
@@ -172,7 +175,7 @@ export default function CartScreen() {
                 {itemCount} item{itemCount !== 1 ? "s" : ""}
               </Text>
               <Text style={[styles.summaryTotal, { color: colors.foreground }]}>
-                ${total.toFixed(2)}
+                {formatNaira(total)}
               </Text>
             </View>
             <Pressable
@@ -209,10 +212,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.5,
   },
-  clearText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  clearText: { fontSize: 14, fontWeight: "600" },
   empty: {
     flex: 1,
     alignItems: "center",
@@ -220,31 +220,20 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 40,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: "center",
-  },
+  emptyTitle: { fontSize: 20, fontWeight: "700" },
+  emptyText: { fontSize: 14, textAlign: "center" },
   shopBtn: {
     paddingHorizontal: 28,
     paddingVertical: 14,
     marginTop: 8,
   },
-  shopBtnText: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
+  shopBtnText: { fontSize: 15, fontWeight: "700" },
   item: {
     flexDirection: "row",
     borderWidth: 1,
     overflow: "hidden",
   },
-  colorBar: {
-    width: 5,
-  },
+  colorBar: { width: 5 },
   itemContent: {
     flex: 1,
     flexDirection: "row",
@@ -252,26 +241,11 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 12,
   },
-  itemInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  itemName: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  itemSize: {
-    fontSize: 12,
-  },
-  itemPrice: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  itemActions: {
-    alignItems: "flex-end",
-    gap: 10,
-  },
+  itemInfo: { flex: 1, gap: 3 },
+  itemName: { fontSize: 14, fontWeight: "600", lineHeight: 19 },
+  itemSize: { fontSize: 12 },
+  itemPrice: { fontSize: 15, fontWeight: "700", marginTop: 4 },
+  itemActions: { alignItems: "flex-end", gap: 10 },
   deleteBtn: {
     width: 30,
     height: 30,
@@ -286,30 +260,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  qtyText: {
-    fontSize: 14,
-    fontWeight: "700",
-    minWidth: 20,
-    textAlign: "center",
-  },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    gap: 12,
-  },
+  qtyText: { fontSize: 14, fontWeight: "700", minWidth: 20, textAlign: "center" },
+  footer: { padding: 16, borderTopWidth: 1, gap: 12 },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  summaryLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  summaryTotal: {
-    fontSize: 22,
-    fontWeight: "800",
-  },
+  summaryLabel: { fontSize: 14, fontWeight: "500" },
+  summaryTotal: { fontSize: 22, fontWeight: "800" },
   checkoutBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -317,8 +276,5 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
   },
-  checkoutBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  checkoutBtnText: { fontSize: 16, fontWeight: "700" },
 });

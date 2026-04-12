@@ -1,11 +1,10 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "fhBUhMGpjuSPW5RdaetGR"
 uri = "file://artifacts/drinks-store/assets/images/icon.png"
 type = "image"
-title = "drinks store app icon"
+title = "ASL luxury spirits app icon"
 
 [[generated]]
 id = "feOxMjCaljFQhy3kguGQZ"
@@ -24,3 +23,39 @@ id = "zBC1QhhUrpPsEvUvWdF6t"
 uri = "file://artifacts/drinks-store/assets/images/category_energy.png"
 type = "image"
 title = "energy drinks category"
+
+[[generated]]
+id = "ngbFogPtv9_6No6bBwcA0"
+uri = "file://artifacts/drinks-store/assets/images/casamigos-blanco.png"
+type = "image"
+title = "Casamigos Blanco bottle product shot"
+
+[[generated]]
+id = "LmDxJ_s5pLBTqFjLXzyPy"
+uri = "file://artifacts/drinks-store/assets/images/casamigos-reposado.png"
+type = "image"
+title = "Casamigos Reposado bottle product shot"
+
+[[generated]]
+id = "CU74F2NOsnP2UgarjWtX9"
+uri = "file://artifacts/drinks-store/assets/images/clase-azul-anejo.png"
+type = "image"
+title = "Clase Azul Anejo ceramic bottle product shot"
+
+[[generated]]
+id = "pusAQz3NiFpgjQwMnusCP"
+uri = "file://artifacts/drinks-store/assets/images/clase-azul-reposado.png"
+type = "image"
+title = "Clase Azul Reposado ceramic bottle product shot"
+
+[[generated]]
+id = "lg_zaF74lAe5znqQ2GP1e"
+uri = "file://artifacts/drinks-store/assets/images/asl-logo.png"
+type = "image"
+title = "ASL brand logo for header"
+
+[[outputs]]
+id = "BYms7WaQAaBtAfAMoxjLX"
+uri = "file://attached_assets/stock_images/stock_image.jpg"
+type = "image"
+title = "Premium luxury tequila bottle blue and white artisan ceramic"

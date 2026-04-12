@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,7 +18,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useOrders } from "@/context/OrdersContext";
 import { useColors } from "@/hooks/useColors";
 
-const PAYMENT_METHODS = ["Credit Card", "Debit Card", "PayPal", "Apple Pay"];
+const PAYMENT_METHODS = ["Bank Transfer", "Card Payment", "USSD", "Pay on Delivery"];
+const formatNaira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
 export default function CheckoutScreen() {
   const colors = useColors();
@@ -30,6 +30,7 @@ export default function CheckoutScreen() {
 
   const [name, setName] = useState(user?.name ?? "");
   const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [placed, setPlaced] = useState(false);
@@ -41,7 +42,8 @@ export default function CheckoutScreen() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = "Name is required";
-    if (!address.trim()) e.address = "Address is required";
+    if (!address.trim()) e.address = "Delivery address is required";
+    if (!phone.trim()) e.phone = "Phone number is required";
     return e;
   };
 
@@ -53,7 +55,11 @@ export default function CheckoutScreen() {
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const id = addOrder(items, total, { name, address, paymentMethod });
+    const id = addOrder(items, total, {
+      name,
+      address: `${address} · ${phone}`,
+      paymentMethod,
+    });
     setOrderId(id);
     clearCart();
     setPlaced(true);
@@ -71,14 +77,15 @@ export default function CheckoutScreen() {
           },
         ]}
       >
-        <View style={[styles.successIcon, { backgroundColor: colors.success + "22" }]}>
-          <Feather name="check-circle" size={56} color={colors.success} />
+        <View style={[styles.successIcon, { backgroundColor: colors.primary + "22" }]}>
+          <Feather name="check-circle" size={56} color={colors.primary} />
         </View>
         <Text style={[styles.successTitle, { color: colors.foreground }]}>
           Order Placed!
         </Text>
         <Text style={[styles.successSub, { color: colors.mutedForeground }]}>
-          Your order #{orderId.slice(-6).toUpperCase()} has been received
+          Your order #{orderId.slice(-6).toUpperCase()} has been received.{"\n"}
+          We'll contact you shortly via WhatsApp to confirm.
         </Text>
         <Pressable
           onPress={() => router.push("/(tabs)/orders" as any)}
@@ -103,7 +110,6 @@ export default function CheckoutScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: topInset + 16 }]}>
         <Pressable onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -125,22 +131,27 @@ export default function CheckoutScreen() {
         <View
           style={[
             styles.summaryCard,
-            { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: colors.radius,
+            },
           ]}
         >
           {items.map((item, idx) => (
             <View key={`${item.drinkId}-${item.sizeLabel}-${idx}`} style={styles.summaryItem}>
-              <View
-                style={[styles.summaryDot, { backgroundColor: item.accentColor }]}
-              />
-              <Text style={[styles.summaryName, { color: colors.foreground }]} numberOfLines={1}>
+              <View style={[styles.summaryDot, { backgroundColor: item.accentColor }]} />
+              <Text
+                style={[styles.summaryName, { color: colors.foreground }]}
+                numberOfLines={1}
+              >
                 {item.drinkName}
               </Text>
               <Text style={[styles.summaryQty, { color: colors.mutedForeground }]}>
                 x{item.quantity}
               </Text>
               <Text style={[styles.summaryPrice, { color: colors.foreground }]}>
-                ${(item.sizePrice * item.quantity).toFixed(2)}
+                {formatNaira(item.sizePrice * item.quantity)}
               </Text>
             </View>
           ))}
@@ -148,7 +159,7 @@ export default function CheckoutScreen() {
           <View style={styles.totalRow}>
             <Text style={[styles.totalLabel, { color: colors.foreground }]}>Total</Text>
             <Text style={[styles.totalAmount, { color: colors.primary }]}>
-              ${total.toFixed(2)}
+              {formatNaira(total)}
             </Text>
           </View>
         </View>
@@ -157,7 +168,6 @@ export default function CheckoutScreen() {
         <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 24 }]}>
           Delivery Details
         </Text>
-
         <View style={{ gap: 14 }}>
           <View>
             <Text style={[styles.inputLabel, { color: colors.foreground }]}>Full Name</Text>
@@ -171,7 +181,7 @@ export default function CheckoutScreen() {
                   color: colors.foreground,
                 },
               ]}
-              placeholder="Your name"
+              placeholder="Your full name"
               placeholderTextColor={colors.mutedForeground}
               value={name}
               onChangeText={(t) => {
@@ -182,6 +192,34 @@ export default function CheckoutScreen() {
             {errors.name && (
               <Text style={[styles.error, { color: colors.destructive }]}>
                 {errors.name}
+              </Text>
+            )}
+          </View>
+
+          <View>
+            <Text style={[styles.inputLabel, { color: colors.foreground }]}>Phone Number</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.secondary,
+                  borderColor: errors.phone ? colors.destructive : colors.border,
+                  borderRadius: colors.radius,
+                  color: colors.foreground,
+                },
+              ]}
+              placeholder="+234 800 000 0000"
+              placeholderTextColor={colors.mutedForeground}
+              value={phone}
+              onChangeText={(t) => {
+                setPhone(t);
+                if (errors.phone) setErrors((e) => ({ ...e, phone: "" }));
+              }}
+              keyboardType="phone-pad"
+            />
+            {errors.phone && (
+              <Text style={[styles.error, { color: colors.destructive }]}>
+                {errors.phone}
               </Text>
             )}
           </View>
@@ -199,7 +237,7 @@ export default function CheckoutScreen() {
                   color: colors.foreground,
                 },
               ]}
-              placeholder="Street, City, State, ZIP"
+              placeholder="Street address, City, State"
               placeholderTextColor={colors.mutedForeground}
               value={address}
               onChangeText={(t) => {
@@ -235,32 +273,29 @@ export default function CheckoutScreen() {
                   borderColor:
                     paymentMethod === method ? colors.primary : colors.border,
                   backgroundColor:
-                    paymentMethod === method
-                      ? colors.primary + "12"
-                      : colors.card,
+                    paymentMethod === method ? colors.primary + "12" : colors.card,
                   borderRadius: colors.radius,
                 },
               ]}
             >
               <Feather
                 name={
-                  method === "Credit Card" || method === "Debit Card"
+                  method === "Card Payment"
                     ? "credit-card"
-                    : method === "PayPal"
-                    ? "dollar-sign"
-                    : "smartphone"
+                    : method === "Bank Transfer"
+                    ? "layers"
+                    : method === "USSD"
+                    ? "smartphone"
+                    : "package"
                 }
                 size={20}
-                color={
-                  paymentMethod === method ? colors.primary : colors.foreground
-                }
+                color={paymentMethod === method ? colors.primary : colors.foreground}
               />
               <Text
                 style={[
                   styles.paymentText,
                   {
-                    color:
-                      paymentMethod === method ? colors.primary : colors.foreground,
+                    color: paymentMethod === method ? colors.primary : colors.foreground,
                     fontWeight: paymentMethod === method ? "700" : "500",
                   },
                 ]}
@@ -275,7 +310,7 @@ export default function CheckoutScreen() {
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Place Order Button */}
+      {/* Place Order */}
       <View
         style={[
           styles.footer,
@@ -295,7 +330,7 @@ export default function CheckoutScreen() {
         >
           <Feather name="check" size={20} color={colors.primaryForeground} />
           <Text style={[styles.placeOrderText, { color: colors.primaryForeground }]}>
-            Place Order — ${total.toFixed(2)}
+            Place Order · {formatNaira(total)}
           </Text>
         </Pressable>
       </View>
@@ -318,16 +353,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  successSub: {
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 22,
-  },
+  successTitle: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
+  successSub: { fontSize: 14, textAlign: "center", lineHeight: 22 },
   trackBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -338,14 +365,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 8,
   },
-  trackBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  continueShopping: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
+  trackBtnText: { fontSize: 16, fontWeight: "700" },
+  continueShopping: { fontSize: 15, fontWeight: "600" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -353,75 +374,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  summaryCard: {
-    borderWidth: 1,
-    padding: 14,
-    gap: 10,
-  },
-  summaryItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  summaryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  summaryName: {
-    flex: 1,
-    fontSize: 14,
-  },
-  summaryQty: {
-    fontSize: 13,
-  },
-  summaryPrice: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  divider: {
-    height: 1,
-  },
+  headerTitle: { fontSize: 18, fontWeight: "700" },
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 12 },
+  summaryCard: { borderWidth: 1, padding: 14, gap: 10 },
+  summaryItem: { flexDirection: "row", alignItems: "center", gap: 10 },
+  summaryDot: { width: 8, height: 8, borderRadius: 4 },
+  summaryName: { flex: 1, fontSize: 13 },
+  summaryQty: { fontSize: 13 },
+  summaryPrice: { fontSize: 13, fontWeight: "600" },
+  divider: { height: 1 },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  totalLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  totalAmount: {
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  input: {
-    padding: 14,
-    fontSize: 15,
-    borderWidth: 1,
-  },
-  addressInput: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  error: {
-    fontSize: 12,
-    marginTop: 4,
-  },
+  totalLabel: { fontSize: 15, fontWeight: "600" },
+  totalAmount: { fontSize: 20, fontWeight: "800" },
+  inputLabel: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
+  input: { padding: 14, fontSize: 15, borderWidth: 1 },
+  addressInput: { minHeight: 80, textAlignVertical: "top" },
+  error: { fontSize: 12, marginTop: 4 },
   paymentOption: {
     flexDirection: "row",
     alignItems: "center",
@@ -429,14 +401,8 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1.5,
   },
-  paymentText: {
-    flex: 1,
-    fontSize: 15,
-  },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-  },
+  paymentText: { flex: 1, fontSize: 15 },
+  footer: { padding: 16, borderTopWidth: 1 },
   placeOrderBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -444,8 +410,5 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
   },
-  placeOrderText: {
-    fontSize: 17,
-    fontWeight: "700",
-  },
+  placeOrderText: { fontSize: 17, fontWeight: "700" },
 });

@@ -20,20 +20,23 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ### Drinks Store Mobile App (`artifacts/drinks-store`)
 - **Type**: Expo (React Native) — iOS & Android
-- **Name**: Sip & Chill
+- **Brand**: Authentic Shayo Lockerr (ASL) — premium Nigerian spirits retailer
+- **Website**: https://authenticshayolockerr.com
 - **Preview**: `/`
 - **State**: AsyncStorage (no backend, fully local)
 - **Features**:
-  - Home screen with featured banner, categories, search
-  - Product listing with 12 drinks across 6 categories
-  - Product detail page with size/quantity picker, ingredients
-  - Shopping cart with quantity management
-  - Checkout flow with delivery + payment form, order confirmation
+  - Home screen: ASL logo header, hero banner, featured horizontal row, category pills, product grid
+  - Product listing: 4 premium tequilas (Casamigos Blanco ₦116k, Casamigos Reposado ₦123.25k, Clase Azul Añejo ₦362.5k, Clase Azul Reposado ₦362.5k)
+  - Product detail: full bottle image, origin/ABV, tasting notes, size/quantity picker, authenticity badge, Add to Cart
+  - Shopping cart with quantity management, Naira pricing
+  - Checkout flow: name/phone/address, Nigerian payment methods (Bank Transfer, Card, USSD, Pay on Delivery), order confirmation
   - User auth (sign up / login, stored locally)
   - Favorites (heart icon, persisted)
   - Order history with status tracking
+- **Product Images**: AI-generated bottle photography in `assets/images/` (casamigos-blanco.png, casamigos-reposado.png, clase-azul-anejo.png, clase-azul-reposado.png)
+- **Logo**: AI-generated ASL brand logo in `assets/images/asl-logo.png`
 - **Contexts**: CartContext, AuthContext, FavoritesContext, OrdersContext
-- **Colors**: Sky blue (#0ea5e9) primary, orange (#f97316) accent — light + dark
+- **Theme**: Dark luxury gold — dark bg `#0d0b08`, gold primary `#d4a843`, cream bg (light: `#fdf8f0`)
 
 ### API Server (`artifacts/api-server`)
 - Express 5 + TypeScript backend

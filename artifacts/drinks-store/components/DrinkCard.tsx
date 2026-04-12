@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useCallback } from "react";
 import {
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -17,8 +18,8 @@ import Animated, {
 
 import { useFavorites } from "@/context/FavoritesContext";
 import { useColors } from "@/hooks/useColors";
-import { Drink } from "@/data/drinks";
-import { DrinkVisual } from "./DrinkVisual";
+import { Drink, formatPrice } from "@/data/drinks";
+import productImages from "@/assets/images/productImages";
 
 interface Props {
   drink: Drink;
@@ -40,7 +41,7 @@ export function DrinkCard({ drink, size = "large" }: Props) {
   }));
 
   const onPress = useCallback(() => {
-    scale.value = withSpring(0.95, {}, () => {
+    scale.value = withSpring(0.96, {}, () => {
       scale.value = withSpring(1);
     });
     router.push({ pathname: "/drink/[id]", params: { id: drink.id } } as any);
@@ -62,7 +63,7 @@ export function DrinkCard({ drink, size = "large" }: Props) {
   const isSmall = size === "small";
 
   return (
-    <Animated.View style={[animStyle, { width: isSmall ? 160 : undefined }]}>
+    <Animated.View style={[animStyle, { width: isSmall ? 170 : undefined }]}>
       <Pressable onPress={onPress}>
         <View
           style={[
@@ -71,58 +72,68 @@ export function DrinkCard({ drink, size = "large" }: Props) {
               backgroundColor: colors.card,
               borderColor: colors.border,
               borderRadius: colors.radius,
-              width: isSmall ? 160 : undefined,
-              padding: isSmall ? 12 : 16,
+              padding: isSmall ? 12 : 14,
             },
           ]}
         >
+          {/* Product Image */}
           <View
             style={[
               styles.imageContainer,
               {
-                backgroundColor: drink.imageColor + "22",
-                borderRadius: colors.radius - 4,
-                height: isSmall ? 100 : 130,
+                backgroundColor: drink.imageColor + "18",
+                borderRadius: colors.radius - 2,
+                height: isSmall ? 130 : 160,
               },
             ]}
           >
-            <DrinkVisual drink={drink} size={isSmall ? 60 : 80} />
-            {drink.tags && drink.tags[0] && !isSmall && (
+            <Image
+              source={productImages[drink.id]}
+              style={styles.productImage}
+              resizeMode="contain"
+            />
+            {/* Tags */}
+            {drink.tags && drink.tags[0] && (
               <View
                 style={[
                   styles.tag,
-                  {
-                    backgroundColor: drink.accentColor,
-                    borderRadius: 100,
-                  },
+                  { backgroundColor: drink.accentColor + "ee", borderRadius: 100 },
                 ]}
               >
-                <Text style={styles.tagText}>{drink.tags[0]}</Text>
+                <Text style={styles.tagText}>{drink.tags[0].toUpperCase()}</Text>
               </View>
             )}
+            {/* Favorite */}
             <Animated.View style={[styles.favBtn, favAnimStyle]}>
               <Pressable onPress={onFavorite} hitSlop={10}>
                 <Ionicons
                   name={fav ? "heart" : "heart-outline"}
                   size={18}
-                  color={fav ? "#ef4444" : colors.mutedForeground}
+                  color={fav ? "#e74c3c" : colors.mutedForeground}
                 />
               </Pressable>
             </Animated.View>
           </View>
 
-          <View style={{ marginTop: 10 }}>
+          {/* Info */}
+          <View style={{ marginTop: 10, gap: 3 }}>
+            {/* Origin badge */}
+            {drink.origin && (
+              <Text style={[styles.origin, { color: colors.mutedForeground }]}>
+                {drink.origin} · {drink.abv}
+              </Text>
+            )}
             <Text
               style={[
                 styles.name,
                 { color: colors.foreground, fontSize: isSmall ? 13 : 15 },
               ]}
-              numberOfLines={isSmall ? 1 : 2}
+              numberOfLines={isSmall ? 2 : 2}
             >
-              {drink.name}
+              {isSmall ? drink.shortName : drink.name}
             </Text>
             <View style={styles.ratingRow}>
-              <Ionicons name="star" size={12} color="#f59e0b" />
+              <Ionicons name="star" size={11} color="#d4a843" />
               <Text style={[styles.rating, { color: colors.mutedForeground }]}>
                 {drink.rating}
                 {!isSmall && (
@@ -133,13 +144,10 @@ export function DrinkCard({ drink, size = "large" }: Props) {
             <Text
               style={[
                 styles.price,
-                {
-                  color: drink.accentColor,
-                  fontSize: isSmall ? 14 : 16,
-                },
+                { color: drink.accentColor, fontSize: isSmall ? 14 : 16 },
               ]}
             >
-              ${drink.price.toFixed(2)}
+              {formatPrice(drink.price, drink.currency)}
             </Text>
           </View>
         </View>
@@ -156,8 +164,8 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
       },
       android: { elevation: 3 },
     }),
@@ -166,6 +174,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+  },
+  productImage: {
+    width: "75%",
+    height: "90%",
   },
   tag: {
     position: "absolute",
@@ -176,10 +188,9 @@ const styles = StyleSheet.create({
   },
   tagText: {
     color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.8,
   },
   favBtn: {
     position: "absolute",
@@ -187,23 +198,29 @@ const styles = StyleSheet.create({
     right: 8,
     backgroundColor: "rgba(255,255,255,0.9)",
     borderRadius: 100,
-    padding: 4,
+    padding: 5,
+  },
+  origin: {
+    fontSize: 11,
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   name: {
-    fontWeight: "600",
-    marginBottom: 4,
+    fontWeight: "700",
+    lineHeight: 20,
   },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginBottom: 6,
   },
   rating: {
     fontSize: 12,
     fontWeight: "500",
   },
   price: {
-    fontWeight: "700",
+    fontWeight: "800",
+    marginTop: 2,
   },
 });

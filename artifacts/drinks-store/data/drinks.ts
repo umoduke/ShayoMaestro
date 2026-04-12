@@ -1,268 +1,150 @@
 export type DrinkCategory =
   | "all"
-  | "soft-drinks"
-  | "juices"
-  | "energy-drinks"
-  | "cocktails"
-  | "smoothies"
-  | "water";
+  | "tequila"
+  | "whiskey"
+  | "rum"
+  | "gin"
+  | "vodka"
+  | "wine";
 
 export interface Drink {
   id: string;
   name: string;
+  shortName: string;
   category: DrinkCategory;
   price: number;
+  currency: string;
   rating: number;
   reviewCount: number;
   description: string;
+  shortDescription: string;
   ingredients: string[];
   sizes: { label: string; price: number }[];
+  imageUri: string;
   imageColor: string;
   accentColor: string;
   featured?: boolean;
   tags?: string[];
+  origin?: string;
+  abv?: string;
 }
 
 export const CATEGORIES: { id: DrinkCategory; label: string; icon: string }[] = [
   { id: "all", label: "All", icon: "grid" },
-  { id: "soft-drinks", label: "Soft Drinks", icon: "cup" },
-  { id: "juices", label: "Juices", icon: "leaf" },
-  { id: "energy-drinks", label: "Energy", icon: "zap" },
-  { id: "cocktails", label: "Cocktails", icon: "star" },
-  { id: "smoothies", label: "Smoothies", icon: "droplet" },
-  { id: "water", label: "Water", icon: "wind" },
+  { id: "tequila", label: "Tequila", icon: "star" },
+  { id: "whiskey", label: "Whiskey", icon: "coffee" },
+  { id: "rum", label: "Rum", icon: "sun" },
+  { id: "gin", label: "Gin", icon: "feather" },
+  { id: "vodka", label: "Vodka", icon: "zap" },
+  { id: "wine", label: "Wine", icon: "droplet" },
 ];
 
 export const DRINKS: Drink[] = [
   {
     id: "1",
-    name: "Arctic Blast Cola",
-    category: "soft-drinks",
-    price: 3.99,
-    rating: 4.7,
-    reviewCount: 1243,
-    description:
-      "A crisp, refreshing cola with an icy twist. Perfectly carbonated with a hint of mint and vanilla, Arctic Blast delivers the ultimate cool-down experience.",
-    ingredients: ["Carbonated Water", "Cane Sugar", "Natural Mint Extract", "Vanilla", "Caramel Color"],
-    sizes: [
-      { label: "Small (250ml)", price: 3.99 },
-      { label: "Medium (500ml)", price: 5.49 },
-      { label: "Large (750ml)", price: 6.99 },
-    ],
-    imageColor: "#1a6fa8",
-    accentColor: "#38bdf8",
-    featured: true,
-    tags: ["bestseller", "new"],
-  },
-  {
-    id: "2",
-    name: "Tropical Sunrise",
-    category: "juices",
-    price: 5.49,
-    rating: 4.8,
-    reviewCount: 892,
-    description:
-      "A vibrant blend of mango, passion fruit, and pineapple — bursting with tropical flavor and natural vitamins. Every sip is a mini vacation.",
-    ingredients: ["Mango Juice", "Passion Fruit", "Pineapple", "Lemon", "Natural Sweetener"],
-    sizes: [
-      { label: "Small (300ml)", price: 5.49 },
-      { label: "Medium (500ml)", price: 7.49 },
-    ],
-    imageColor: "#c2670a",
-    accentColor: "#f97316",
-    featured: true,
-    tags: ["popular", "healthy"],
-  },
-  {
-    id: "3",
-    name: "Thunder Rush",
-    category: "energy-drinks",
-    price: 4.99,
-    rating: 4.5,
-    reviewCount: 2341,
-    description:
-      "Unleash peak performance with Thunder Rush. Loaded with B-vitamins, taurine, and natural caffeine from green tea extract. No crash, all power.",
-    ingredients: ["Carbonated Water", "Taurine", "Green Tea Extract", "B-Vitamins", "Natural Citrus"],
-    sizes: [
-      { label: "Regular (250ml)", price: 4.99 },
-      { label: "Mega (500ml)", price: 7.99 },
-    ],
-    imageColor: "#1a4f2a",
-    accentColor: "#22c55e",
-    featured: true,
-    tags: ["bestseller"],
-  },
-  {
-    id: "4",
-    name: "Moonlight Mojito",
-    category: "cocktails",
-    price: 8.99,
-    rating: 4.9,
-    reviewCount: 445,
-    description:
-      "A sophisticated non-alcoholic mojito crafted with fresh lime, hand-picked mint, and sparkling water. Elegant, refreshing, and zero proof.",
-    ingredients: ["Sparkling Water", "Fresh Lime", "Mint", "Cane Sugar", "Natural Flavors"],
-    sizes: [
-      { label: "Regular (350ml)", price: 8.99 },
-      { label: "Large (500ml)", price: 11.49 },
-    ],
-    imageColor: "#0d3d2e",
-    accentColor: "#10b981",
-    featured: false,
-    tags: ["premium", "zero-proof"],
-  },
-  {
-    id: "5",
-    name: "Berry Blast Smoothie",
-    category: "smoothies",
-    price: 7.49,
-    rating: 4.6,
-    reviewCount: 678,
-    description:
-      "A thick, indulgent blend of strawberries, blueberries, raspberries and acai. Packed with antioxidants and natural goodness. No added sugars.",
-    ingredients: ["Strawberries", "Blueberries", "Raspberries", "Acai", "Almond Milk", "Banana"],
-    sizes: [
-      { label: "Small (400ml)", price: 7.49 },
-      { label: "Large (600ml)", price: 9.99 },
-    ],
-    imageColor: "#5b1fa8",
-    accentColor: "#a855f7",
-    featured: false,
-    tags: ["healthy", "vegan"],
-  },
-  {
-    id: "6",
-    name: "Crystal Spring Water",
-    category: "water",
-    price: 1.99,
-    rating: 4.3,
-    reviewCount: 3210,
-    description:
-      "Pure mountain spring water from the Cascade highlands. Naturally filtered through volcanic rock for mineral-perfect hydration.",
-    ingredients: ["Natural Spring Water", "Natural Minerals"],
-    sizes: [
-      { label: "500ml", price: 1.99 },
-      { label: "1 Liter", price: 3.49 },
-      { label: "1.5 Liter", price: 4.49 },
-    ],
-    imageColor: "#0c4a6e",
-    accentColor: "#0ea5e9",
-    featured: false,
-    tags: ["natural", "essential"],
-  },
-  {
-    id: "7",
-    name: "Pink Lemonade Spritz",
-    category: "soft-drinks",
-    price: 4.49,
-    rating: 4.6,
-    reviewCount: 788,
-    description:
-      "A sparkling pink lemonade made with real raspberries and Meyer lemons. Sweet, tart, and totally irresistible.",
-    ingredients: ["Sparkling Water", "Raspberry", "Meyer Lemon", "Cane Sugar", "Natural Color"],
-    sizes: [
-      { label: "Small (250ml)", price: 4.49 },
-      { label: "Medium (500ml)", price: 6.49 },
-    ],
-    imageColor: "#9d174d",
-    accentColor: "#f43f5e",
-    featured: false,
-    tags: ["popular"],
-  },
-  {
-    id: "8",
-    name: "Green Goddess Detox",
-    category: "juices",
-    price: 6.99,
-    rating: 4.7,
-    reviewCount: 521,
-    description:
-      "A powerful cleansing blend of cucumber, spinach, green apple, and ginger. Detoxify and energize with every bottle.",
-    ingredients: ["Cucumber", "Spinach", "Green Apple", "Ginger", "Lemon", "Celery"],
-    sizes: [
-      { label: "350ml", price: 6.99 },
-      { label: "500ml", price: 8.99 },
-    ],
-    imageColor: "#14532d",
-    accentColor: "#4ade80",
-    featured: false,
-    tags: ["healthy", "detox"],
-  },
-  {
-    id: "9",
-    name: "Sunset Sangria",
-    category: "cocktails",
-    price: 9.49,
+    name: "Casamigos Blanco Tequila",
+    shortName: "Casamigos Blanco",
+    category: "tequila",
+    price: 116000,
+    currency: "₦",
     rating: 4.8,
     reviewCount: 312,
     description:
-      "A rich, fruity non-alcoholic sangria with notes of grape, cherry, citrus, and warm spices. Beautiful and complex.",
-    ingredients: ["Grape Juice", "Cherry", "Orange", "Cinnamon", "Clove", "Sparkling Water"],
+      "Casamigos Blanco is a premium unaged tequila crafted from carefully selected 100% blue Weber agave grown in the highlands of Jalisco, Mexico. Slow-roasted and fermented to produce a clean, crisp tequila with a smooth and refreshing flavor profile. Bright notes of citrus, sweet agave, and subtle hints of vanilla — finishing smooth and well-balanced.",
+    shortDescription:
+      "Crisp and smooth premium tequila from 100% blue Weber agave. Fresh citrus notes, light sweetness, perfect for sipping or cocktails.",
+    ingredients: ["100% Blue Weber Agave", "Jalisco Highland Water", "Citrus Notes", "Vanilla Hints"],
     sizes: [
-      { label: "350ml", price: 9.49 },
-      { label: "500ml", price: 12.99 },
+      { label: "750ml", price: 116000 },
+      { label: "1 Litre", price: 148000 },
     ],
-    imageColor: "#7c1d1d",
-    accentColor: "#dc2626",
-    featured: false,
-    tags: ["premium"],
+    imageUri:
+      "https://authenticshayolockerr.com/wp-content/uploads/2026/03/Casamigos-Blanco-Tequila-Bottle-1024x1024.webp",
+    imageColor: "#1a3040",
+    accentColor: "#5ba3c9",
+    featured: true,
+    tags: ["bestseller", "premium"],
+    origin: "Jalisco, Mexico",
+    abv: "40%",
   },
   {
-    id: "10",
-    name: "Neon Citrus Surge",
-    category: "energy-drinks",
-    price: 5.49,
-    rating: 4.4,
-    reviewCount: 1876,
-    description:
-      "An electrifying citrus energy drink with a neon kick. Blood orange, yuzu, and lemon amplified with natural caffeine and electrolytes.",
-    ingredients: ["Blood Orange", "Yuzu", "Lemon", "Natural Caffeine", "Electrolytes", "B-Vitamins"],
-    sizes: [
-      { label: "Regular (250ml)", price: 5.49 },
-      { label: "Mega (500ml)", price: 8.49 },
-    ],
-    imageColor: "#7c2d12",
-    accentColor: "#fb923c",
-    featured: false,
-    tags: ["new"],
-  },
-  {
-    id: "11",
-    name: "Coconut Dream Smoothie",
-    category: "smoothies",
-    price: 8.49,
+    id: "2",
+    name: "Casamigos Reposado Tequila",
+    shortName: "Casamigos Reposado",
+    category: "tequila",
+    price: 123250,
+    currency: "₦",
     rating: 4.9,
-    reviewCount: 245,
+    reviewCount: 278,
     description:
-      "Creamy coconut milk blended with banana, mango, and toasted coconut flakes. A tropical smoothie that tastes like dessert.",
-    ingredients: ["Coconut Milk", "Banana", "Mango", "Toasted Coconut Flakes", "Honey"],
+      "Casamigos Reposado is aged for 7 months in American white oak barrels, giving it a smooth caramel and cocoa complexity that sets it apart. Made from 100% blue Weber agave from the Jalisco highlands. Warm oak, caramel, and agave flavors come together in a perfectly balanced, sippable tequila that's as good neat as it is in a cocktail.",
+    shortDescription:
+      "Aged 7 months in American oak. Rich caramel, cocoa, and agave notes with exceptional smoothness.",
+    ingredients: ["100% Blue Weber Agave", "Caramel", "Cocoa", "Oak Barrel Aged 7 Months"],
     sizes: [
-      { label: "400ml", price: 8.49 },
-      { label: "600ml", price: 10.99 },
+      { label: "750ml", price: 123250 },
+      { label: "1 Litre", price: 158000 },
     ],
-    imageColor: "#78350f",
-    accentColor: "#d97706",
-    featured: false,
-    tags: ["premium", "tropical"],
+    imageUri:
+      "https://authenticshayolockerr.com/wp-content/uploads/2026/03/Casamigos-Reposado-Tequila-Bottle-1024x1024.webp",
+    imageColor: "#3d2810",
+    accentColor: "#c9963a",
+    featured: true,
+    tags: ["popular", "aged"],
+    origin: "Jalisco, Mexico",
+    abv: "40%",
   },
   {
-    id: "12",
-    name: "Sparkling Elderflower",
-    category: "soft-drinks",
-    price: 4.99,
-    rating: 4.5,
-    reviewCount: 432,
+    id: "3",
+    name: "Clase Azul Añejo Tequila",
+    shortName: "Clase Azul Añejo",
+    category: "tequila",
+    price: 362500,
+    currency: "₦",
+    rating: 4.9,
+    reviewCount: 145,
     description:
-      "A delicate, floral sparkling drink with elderflower and lychee. Light, sophisticated, and perfectly refreshing.",
-    ingredients: ["Sparkling Water", "Elderflower Extract", "Lychee", "Cane Sugar", "Citric Acid"],
+      "Clase Azul Añejo is an ultra-premium tequila aged for 25 months in sherry oak casks, yielding a remarkably complex spirit. Hand-crafted in Santa Maria Canchesdé, Oaxaca. Rich dried fruit, dark chocolate, cinnamon, and vanilla notes build into a long, warming finish. Presented in an iconic hand-painted ceramic decanter — a collectible as much as a spirit.",
+    shortDescription:
+      "Ultra-premium luxury tequila aged 25 months in sherry oak. Dark chocolate, dried fruit, and cinnamon in an iconic hand-painted decanter.",
+    ingredients: ["100% Blue Weber Agave", "Sherry Oak Aged 25 Months", "Dark Chocolate", "Dried Fruit", "Cinnamon"],
     sizes: [
-      { label: "250ml", price: 4.99 },
-      { label: "500ml", price: 7.49 },
+      { label: "750ml", price: 362500 },
     ],
-    imageColor: "#365314",
-    accentColor: "#84cc16",
+    imageUri:
+      "https://authenticshayolockerr.com/wp-content/uploads/2026/03/Clase-Azul-Anejo-Tequila-Bottle-1024x1024.webp",
+    imageColor: "#1a0d00",
+    accentColor: "#d4a843",
+    featured: true,
+    tags: ["luxury", "limited"],
+    origin: "Oaxaca, Mexico",
+    abv: "40%",
+  },
+  {
+    id: "4",
+    name: "Clase Azul Reposado Tequila",
+    shortName: "Clase Azul Reposado",
+    category: "tequila",
+    price: 362500,
+    currency: "₦",
+    rating: 4.8,
+    reviewCount: 198,
+    description:
+      "Clase Azul Reposado is a handcrafted ultra-premium tequila aged for 8 months in American oak whisky barrels. Produced from 100% organic agave tequilana Weber Blue, it delivers an exceptionally smooth and complex profile with notes of vanilla, coconut, cinnamon, and apple. The iconic hand-painted ceramic bottle makes it as much a work of art as a world-class spirit.",
+    shortDescription:
+      "Handcrafted and aged 8 months in whisky barrels. Vanilla, coconut, and cinnamon notes in an iconic ceramic bottle.",
+    ingredients: ["100% Organic Agave Weber Blue", "American Oak Aged 8 Months", "Vanilla", "Coconut", "Cinnamon"],
+    sizes: [
+      { label: "750ml", price: 362500 },
+    ],
+    imageUri:
+      "https://authenticshayolockerr.com/wp-content/uploads/2026/03/Clase-Azul-Reposado-Tequila-Bottle-1024x1024.webp",
+    imageColor: "#0d1a2a",
+    accentColor: "#4a90c8",
     featured: false,
-    tags: ["artisan"],
+    tags: ["luxury", "artisan"],
+    origin: "Jalisco, Mexico",
+    abv: "40%",
   },
 ];
 
@@ -281,8 +163,13 @@ export const searchDrinks = (query: string): Drink[] => {
   return DRINKS.filter(
     (d) =>
       d.name.toLowerCase().includes(lower) ||
-      d.description.toLowerCase().includes(lower) ||
+      d.shortDescription.toLowerCase().includes(lower) ||
       d.category.includes(lower) ||
-      (d.tags ?? []).some((t) => t.includes(lower))
+      (d.tags ?? []).some((t) => t.includes(lower)) ||
+      (d.origin ?? "").toLowerCase().includes(lower)
   );
+};
+
+export const formatPrice = (price: number, currency: string): string => {
+  return `${currency}${price.toLocaleString("en-NG")}`;
 };

@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View,
 } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -15,17 +14,14 @@ interface Props {
   onSelect: (category: DrinkCategory) => void;
 }
 
-const FEATHER_ICONS: Record<string, string> = {
-  grid: "grid",
-  leaf: "feather",
-  zap: "zap",
-  star: "star",
-  droplet: "droplet",
-  wind: "wind",
-};
-
-const MCI_ICONS: Record<string, string> = {
-  cup: "cup",
+const ICON_MAP: Record<string, { set: "feather" | "mci"; name: string }> = {
+  grid: { set: "feather", name: "grid" },
+  star: { set: "feather", name: "star" },
+  coffee: { set: "feather", name: "coffee" },
+  sun: { set: "feather", name: "sun" },
+  feather: { set: "feather", name: "feather" },
+  zap: { set: "feather", name: "zap" },
+  droplet: { set: "feather", name: "droplet" },
 };
 
 export function CategoryPills({ selected, onSelect }: Props) {
@@ -39,8 +35,7 @@ export function CategoryPills({ selected, onSelect }: Props) {
     >
       {CATEGORIES.map((cat) => {
         const isActive = selected === cat.id;
-        const iconName = cat.icon;
-        const useMCI = !!MCI_ICONS[iconName];
+        const icon = ICON_MAP[cat.icon] ?? { set: "feather", name: "circle" };
 
         return (
           <Pressable
@@ -55,19 +50,11 @@ export function CategoryPills({ selected, onSelect }: Props) {
               },
             ]}
           >
-            {useMCI ? (
-              <MaterialCommunityIcons
-                name={iconName as any}
-                size={14}
-                color={isActive ? colors.primaryForeground : colors.mutedForeground}
-              />
-            ) : (
-              <Feather
-                name={FEATHER_ICONS[iconName] as any}
-                size={14}
-                color={isActive ? colors.primaryForeground : colors.mutedForeground}
-              />
-            )}
+            <Feather
+              name={icon.name as any}
+              size={13}
+              color={isActive ? colors.primaryForeground : colors.mutedForeground}
+            />
             <Text
               style={[
                 styles.pillText,

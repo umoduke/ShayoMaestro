@@ -1,85 +1,85 @@
 const colors = {
   light: {
-    text: "#0f172a",
-    tint: "#0ea5e9",
+    text: "#1a0a00",
+    tint: "#b8860b",
 
-    background: "#f8fafc",
-    foreground: "#0f172a",
+    background: "#fdf8f0",
+    foreground: "#1a0a00",
 
     card: "#ffffff",
-    cardForeground: "#0f172a",
+    cardForeground: "#1a0a00",
 
-    primary: "#0ea5e9",
+    primary: "#b8860b",
     primaryForeground: "#ffffff",
 
-    secondary: "#f1f5f9",
-    secondaryForeground: "#334155",
+    secondary: "#f5ece0",
+    secondaryForeground: "#4a2c00",
 
-    muted: "#f1f5f9",
-    mutedForeground: "#64748b",
+    muted: "#f0e8d8",
+    mutedForeground: "#8c6e3a",
 
-    accent: "#f97316",
+    accent: "#c9963a",
     accentForeground: "#ffffff",
 
-    destructive: "#ef4444",
+    destructive: "#c0392b",
     destructiveForeground: "#ffffff",
 
-    border: "#e2e8f0",
-    input: "#e2e8f0",
+    border: "#e8d8be",
+    input: "#e8d8be",
 
-    success: "#22c55e",
+    success: "#2d7a3a",
     successForeground: "#ffffff",
 
-    warning: "#f59e0b",
+    warning: "#c9963a",
     warningForeground: "#ffffff",
 
-    overlay: "rgba(15, 23, 42, 0.5)",
-    gradientStart: "#0ea5e9",
-    gradientEnd: "#0284c7",
-    cardShadow: "#e2e8f0",
+    overlay: "rgba(26, 10, 0, 0.5)",
+    gradientStart: "#b8860b",
+    gradientEnd: "#8c6400",
+    cardShadow: "#e0cba8",
   },
 
   dark: {
-    text: "#f1f5f9",
-    tint: "#38bdf8",
+    text: "#f5e6c8",
+    tint: "#d4a843",
 
-    background: "#0f172a",
-    foreground: "#f1f5f9",
+    background: "#0d0b08",
+    foreground: "#f5e6c8",
 
-    card: "#1e293b",
-    cardForeground: "#f1f5f9",
+    card: "#1a1510",
+    cardForeground: "#f5e6c8",
 
-    primary: "#38bdf8",
-    primaryForeground: "#0f172a",
+    primary: "#d4a843",
+    primaryForeground: "#0d0b08",
 
-    secondary: "#1e293b",
-    secondaryForeground: "#cbd5e1",
+    secondary: "#231e16",
+    secondaryForeground: "#d4b87a",
 
-    muted: "#1e293b",
-    mutedForeground: "#94a3b8",
+    muted: "#1f1a12",
+    mutedForeground: "#8c7a55",
 
-    accent: "#fb923c",
-    accentForeground: "#0f172a",
+    accent: "#c9963a",
+    accentForeground: "#0d0b08",
 
-    destructive: "#ef4444",
+    destructive: "#e74c3c",
     destructiveForeground: "#ffffff",
 
-    border: "#334155",
-    input: "#334155",
+    border: "#2e2518",
+    input: "#2e2518",
 
-    success: "#4ade80",
-    successForeground: "#0f172a",
+    success: "#2ecc71",
+    successForeground: "#0d0b08",
 
-    warning: "#fbbf24",
-    warningForeground: "#0f172a",
+    warning: "#d4a843",
+    warningForeground: "#0d0b08",
 
-    overlay: "rgba(0, 0, 0, 0.6)",
-    gradientStart: "#38bdf8",
-    gradientEnd: "#0ea5e9",
-    cardShadow: "#0f172a",
+    overlay: "rgba(0, 0, 0, 0.7)",
+    gradientStart: "#d4a843",
+    gradientEnd: "#b8860b",
+    cardShadow: "#000000",
   },
 
-  radius: 14,
+  radius: 12,
 };
 
 export default colors;

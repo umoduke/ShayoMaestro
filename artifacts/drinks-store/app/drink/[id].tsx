@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,11 +18,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DrinkVisual } from "@/components/DrinkVisual";
 import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
-import { getDrinkById } from "@/data/drinks";
+import { getDrinkById, formatPrice } from "@/data/drinks";
 import { useColors } from "@/hooks/useColors";
+import productImages from "@/assets/images/productImages";
 
 export default function DrinkDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,7 +42,6 @@ export default function DrinkDetailScreen() {
   const btnAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }],
   }));
-
   const favAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: favScale.value }],
   }));
@@ -49,7 +49,7 @@ export default function DrinkDetailScreen() {
   if (!drink) {
     return (
       <View style={[styles.notFound, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.foreground }}>Drink not found</Text>
+        <Text style={{ color: colors.foreground }}>Product not found</Text>
         <Pressable onPress={() => router.back()}>
           <Text style={{ color: colors.primary }}>Go back</Text>
         </Pressable>
@@ -61,19 +61,11 @@ export default function DrinkDetailScreen() {
   const size = drink.sizes[selectedSize];
 
   const handleAddToCart = () => {
-    btnScale.value = withSpring(0.9, {}, () => {
+    btnScale.value = withSpring(0.92, {}, () => {
       btnScale.value = withSpring(1);
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addItem({
-      drinkId: drink.id,
-      drinkName: drink.name,
-      sizeLabel: size.label,
-      sizePrice: size.price,
-      imageColor: drink.imageColor,
-      accentColor: drink.accentColor,
-    });
-    for (let i = 0; i < quantity - 1; i++) {
+    for (let i = 0; i < quantity; i++) {
       addItem({
         drinkId: drink.id,
         drinkName: drink.name,
@@ -99,36 +91,45 @@ export default function DrinkDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset + 100 }}
       >
-        {/* Hero */}
+        {/* Hero with product image */}
         <View
           style={[
             styles.hero,
-            { backgroundColor: drink.imageColor + "22", paddingTop: topInset + 16 },
+            {
+              backgroundColor: drink.imageColor,
+              paddingTop: topInset + 12,
+            },
           ]}
         >
+          {/* Nav */}
           <View style={styles.heroNav}>
             <Pressable
               onPress={() => router.back()}
-              style={[styles.navBtn, { backgroundColor: colors.card }]}
+              style={[styles.navBtn, { backgroundColor: "rgba(255,255,255,0.15)" }]}
             >
-              <Feather name="arrow-left" size={20} color={colors.foreground} />
+              <Feather name="arrow-left" size={20} color="#fff" />
             </Pressable>
             <Animated.View style={favAnimStyle}>
               <Pressable
                 onPress={handleFavorite}
-                style={[styles.navBtn, { backgroundColor: colors.card }]}
+                style={[styles.navBtn, { backgroundColor: "rgba(255,255,255,0.15)" }]}
               >
                 <Ionicons
                   name={fav ? "heart" : "heart-outline"}
                   size={20}
-                  color={fav ? "#ef4444" : colors.foreground}
+                  color={fav ? "#e74c3c" : "#fff"}
                 />
               </Pressable>
             </Animated.View>
           </View>
 
-          <View style={styles.heroVisual}>
-            <DrinkVisual drink={drink} size={140} />
+          {/* Bottle Image */}
+          <View style={styles.heroImageContainer}>
+            <Image
+              source={productImages[drink.id]}
+              style={styles.heroImage}
+              resizeMode="contain"
+            />
           </View>
 
           {/* Tags */}
@@ -137,25 +138,39 @@ export default function DrinkDetailScreen() {
               {drink.tags.map((tag) => (
                 <View
                   key={tag}
-                  style={[styles.tag, { backgroundColor: drink.accentColor + "22" }]}
+                  style={[styles.tag, { backgroundColor: drink.accentColor + "cc" }]}
                 >
-                  <Text style={[styles.tagText, { color: drink.accentColor }]}>
-                    {tag}
-                  </Text>
+                  <Text style={styles.tagText}>{tag}</Text>
                 </View>
               ))}
+              {drink.abv && (
+                <View style={[styles.tag, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                  <Text style={styles.tagText}>ABV {drink.abv}</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
 
-        {/* Info */}
+        {/* Product Info */}
         <View style={[styles.info, { backgroundColor: colors.background }]}>
+          {/* Origin */}
+          {drink.origin && (
+            <Text style={[styles.origin, { color: colors.mutedForeground }]}>
+              {drink.origin.toUpperCase()} · TEQUILA
+            </Text>
+          )}
+
           <View style={styles.titleRow}>
-            <Text style={[styles.name, { color: colors.foreground }]}>{drink.name}</Text>
-            <Text style={[styles.price, { color: drink.accentColor }]}>
-              ${size.price.toFixed(2)}
+            <Text style={[styles.name, { color: colors.foreground }]}>
+              {drink.name}
             </Text>
           </View>
+
+          {/* Price */}
+          <Text style={[styles.mainPrice, { color: drink.accentColor }]}>
+            {formatPrice(size.price, drink.currency)}
+          </Text>
 
           {/* Rating */}
           <View style={styles.ratingRow}>
@@ -163,12 +178,12 @@ export default function DrinkDetailScreen() {
               <Ionicons
                 key={star}
                 name={star <= Math.round(drink.rating) ? "star" : "star-outline"}
-                size={16}
-                color="#f59e0b"
+                size={15}
+                color="#d4a843"
               />
             ))}
             <Text style={[styles.ratingText, { color: colors.mutedForeground }]}>
-              {drink.rating} ({drink.reviewCount} reviews)
+              {drink.rating} · {drink.reviewCount} reviews
             </Text>
           </View>
 
@@ -178,56 +193,62 @@ export default function DrinkDetailScreen() {
           </Text>
 
           {/* Size Selector */}
-          <Text style={[styles.label, { color: colors.foreground }]}>Size</Text>
-          <View style={styles.sizes}>
-            {drink.sizes.map((s, idx) => (
-              <Pressable
-                key={s.label}
-                onPress={() => {
-                  setSelectedSize(idx);
-                  Haptics.selectionAsync();
-                }}
-                style={[
-                  styles.sizeBtn,
-                  {
-                    borderColor:
-                      selectedSize === idx ? drink.accentColor : colors.border,
-                    backgroundColor:
-                      selectedSize === idx
-                        ? drink.accentColor + "18"
-                        : colors.secondary,
-                    borderRadius: colors.radius,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.sizeBtnText,
-                    {
-                      color:
-                        selectedSize === idx ? drink.accentColor : colors.foreground,
-                      fontWeight: selectedSize === idx ? "700" : "500",
-                    },
-                  ]}
-                >
-                  {s.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.sizeBtnPrice,
-                    {
-                      color:
-                        selectedSize === idx
-                          ? drink.accentColor
-                          : colors.mutedForeground,
-                    },
-                  ]}
-                >
-                  ${s.price.toFixed(2)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {drink.sizes.length > 1 && (
+            <>
+              <Text style={[styles.label, { color: colors.foreground }]}>Size</Text>
+              <View style={styles.sizes}>
+                {drink.sizes.map((s, idx) => (
+                  <Pressable
+                    key={s.label}
+                    onPress={() => {
+                      setSelectedSize(idx);
+                      Haptics.selectionAsync();
+                    }}
+                    style={[
+                      styles.sizeBtn,
+                      {
+                        borderColor:
+                          selectedSize === idx ? drink.accentColor : colors.border,
+                        backgroundColor:
+                          selectedSize === idx
+                            ? drink.accentColor + "1a"
+                            : colors.secondary,
+                        borderRadius: colors.radius,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.sizeBtnText,
+                        {
+                          color:
+                            selectedSize === idx
+                              ? drink.accentColor
+                              : colors.foreground,
+                          fontWeight: selectedSize === idx ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {s.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.sizeBtnPrice,
+                        {
+                          color:
+                            selectedSize === idx
+                              ? drink.accentColor
+                              : colors.mutedForeground,
+                        },
+                      ]}
+                    >
+                      {formatPrice(s.price, drink.currency)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Quantity */}
           <Text style={[styles.label, { color: colors.foreground }]}>Quantity</Text>
@@ -244,6 +265,7 @@ export default function DrinkDetailScreen() {
                 {
                   backgroundColor: colors.secondary,
                   borderRadius: 100,
+                  borderColor: colors.border,
                   opacity: quantity <= 1 ? 0.4 : 1,
                 },
               ]}
@@ -267,8 +289,8 @@ export default function DrinkDetailScreen() {
             </Pressable>
           </View>
 
-          {/* Ingredients */}
-          <Text style={[styles.label, { color: colors.foreground }]}>Ingredients</Text>
+          {/* Tasting Notes / Ingredients */}
+          <Text style={[styles.label, { color: colors.foreground }]}>Tasting Notes</Text>
           <View style={styles.ingredients}>
             {drink.ingredients.map((ing) => (
               <View
@@ -282,18 +304,33 @@ export default function DrinkDetailScreen() {
                   },
                 ]}
               >
-                <Text
-                  style={[styles.ingredientText, { color: colors.foreground }]}
-                >
+                <Text style={[styles.ingredientText, { color: colors.foreground }]}>
                   {ing}
                 </Text>
               </View>
             ))}
           </View>
+
+          {/* Authenticity note */}
+          <View
+            style={[
+              styles.authenticBanner,
+              {
+                backgroundColor: colors.primary + "14",
+                borderColor: colors.primary + "33",
+                borderRadius: colors.radius,
+              },
+            ]}
+          >
+            <Feather name="shield" size={16} color={colors.primary} />
+            <Text style={[styles.authenticText, { color: colors.primary }]}>
+              100% Authentic · Sourced from verified international suppliers
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
-      {/* Add to Cart Button */}
+      {/* Add to Cart Footer */}
       <View
         style={[
           styles.footer,
@@ -309,7 +346,7 @@ export default function DrinkDetailScreen() {
             Total
           </Text>
           <Text style={[styles.footerTotalPrice, { color: colors.foreground }]}>
-            ${(size.price * quantity).toFixed(2)}
+            {formatPrice(size.price * quantity, drink.currency)}
           </Text>
         </View>
         <Animated.View style={[{ flex: 1 }, btnAnimStyle]}>
@@ -341,12 +378,13 @@ const styles = StyleSheet.create({
   },
   hero: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 20,
+    minHeight: 300,
   },
   heroNav: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 8,
   },
   navBtn: {
     width: 40,
@@ -355,15 +393,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  heroVisual: {
+  heroImageContainer: {
     alignItems: "center",
-    paddingVertical: 16,
+    justifyContent: "center",
+    height: 220,
+  },
+  heroImage: {
+    width: "60%",
+    height: "100%",
   },
   tags: {
     flexDirection: "row",
     gap: 8,
     flexWrap: "wrap",
     justifyContent: "center",
+    marginTop: 8,
   },
   tag: {
     paddingHorizontal: 12,
@@ -371,35 +415,41 @@ const styles = StyleSheet.create({
     borderRadius: 100,
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
+    color: "#fff",
     textTransform: "capitalize",
+    letterSpacing: 0.3,
   },
   info: {
     padding: 20,
+    gap: 6,
+  },
+  origin: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
   titleRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 8,
+    marginTop: 4,
   },
   name: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "800",
     letterSpacing: -0.5,
-    flex: 1,
-    marginRight: 12,
+    lineHeight: 28,
   },
-  price: {
-    fontSize: 24,
+  mainPrice: {
+    fontSize: 26,
     fontWeight: "800",
+    marginTop: 4,
+    marginBottom: 4,
   },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   ratingText: {
     fontSize: 13,
@@ -407,17 +457,18 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 24,
+    lineHeight: 23,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     marginBottom: 12,
+    marginTop: 8,
   },
   sizes: {
     gap: 10,
-    marginBottom: 24,
+    marginBottom: 12,
   },
   sizeBtn: {
     flexDirection: "row",
@@ -426,23 +477,20 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1.5,
   },
-  sizeBtnText: {
-    fontSize: 14,
-  },
-  sizeBtnPrice: {
-    fontSize: 14,
-  },
+  sizeBtnText: { fontSize: 14 },
+  sizeBtnPrice: { fontSize: 14 },
   quantityRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 20,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   qtyBtn: {
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
   },
   qtyText: {
     fontSize: 20,
@@ -454,16 +502,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   ingredient: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderWidth: 1,
   },
-  ingredientText: {
+  ingredientText: { fontSize: 13, fontWeight: "500" },
+  authenticBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  authenticText: {
     fontSize: 13,
-    fontWeight: "500",
+    fontWeight: "600",
+    flex: 1,
+    lineHeight: 18,
   },
   footer: {
     flexDirection: "row",
@@ -472,17 +531,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
   },
-  footerTotal: {
-    gap: 2,
-  },
-  footerTotalLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  footerTotalPrice: {
-    fontSize: 20,
-    fontWeight: "800",
-  },
+  footerTotal: { gap: 2 },
+  footerTotalLabel: { fontSize: 12, fontWeight: "500" },
+  footerTotalPrice: { fontSize: 20, fontWeight: "800" },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -490,9 +541,5 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
   },
-  addBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  addBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });
