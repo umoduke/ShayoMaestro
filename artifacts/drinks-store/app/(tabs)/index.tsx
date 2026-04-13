@@ -60,12 +60,17 @@ export default function HomeScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={[
         styles.scrollContent,
-        { paddingTop: topInset + 16, paddingBottom: bottomInset + 100 },
+        { paddingBottom: bottomInset + 100 },
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Header — dark branded bar */}
+      <View
+        style={[
+          styles.headerBar,
+          { paddingTop: topInset + 10 },
+        ]}
+      >
         <Image
           source={ASL_LOGO}
           style={styles.logo}
@@ -84,16 +89,16 @@ export default function HomeScreen() {
           ) : (
             <Pressable
               onPress={() => router.push("/auth/login" as any)}
-              style={[styles.iconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              style={styles.iconBtnDark}
             >
-              <Feather name="user" size={18} color={colors.foreground} />
+              <Feather name="user" size={18} color="#d4a843" />
             </Pressable>
           )}
           <Pressable
             onPress={() => router.push("/(tabs)/cart" as any)}
-            style={[styles.iconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+            style={styles.iconBtnDark}
           >
-            <Feather name="shopping-bag" size={18} color={colors.foreground} />
+            <Feather name="shopping-bag" size={18} color="#f5e6c8" />
             <CartBadge />
           </Pressable>
         </View>
@@ -101,7 +106,7 @@ export default function HomeScreen() {
 
       {/* Tagline */}
       {!isSearching && (
-        <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+        <View style={{ paddingHorizontal: 16, marginTop: 16, marginBottom: 16 }}>
           <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
             Authentic Premium Spirits · Nigeria
           </Text>
@@ -238,16 +243,17 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   scrollContent: {},
-  header: {
+  headerBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginBottom: 4,
+    paddingBottom: 14,
+    backgroundColor: "#0d0b08",
   },
   logo: {
-    width: 140,
-    height: 44,
+    width: 110,
+    height: 110,
   },
   tagline: {
     fontSize: 12,
@@ -255,9 +261,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   avatarBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -265,13 +271,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  iconBtnDark: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
+    backgroundColor: "#ffffff12",
   },
   banner: {
     flexDirection: "row",
