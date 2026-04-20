@@ -125,15 +125,17 @@ export default function CheckoutScreen() {
           We'll contact you shortly via WhatsApp to confirm.
         </Text>
         <Pressable
-          onPress={() => router.push("/(tabs)/orders" as any)}
+          onPress={() =>
+            router.replace({ pathname: "/order/[id]", params: { id: orderId } } as any)
+          }
           style={[
             styles.trackBtn,
             { backgroundColor: colors.primary, borderRadius: colors.radius },
           ]}
         >
-          <Feather name="package" size={18} color={colors.primaryForeground} />
+          <Feather name="navigation" size={18} color={colors.primaryForeground} />
           <Text style={[styles.trackBtnText, { color: colors.primaryForeground }]}>
-            Track Order
+            Track Your Order
           </Text>
         </Pressable>
         <Pressable onPress={() => router.push("/(tabs)" as any)}>

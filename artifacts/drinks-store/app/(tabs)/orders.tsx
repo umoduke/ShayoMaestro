@@ -16,15 +16,21 @@ import { useColors } from "@/hooks/useColors";
 
 const STATUS_COLORS: Record<Order["status"], string> = {
   processing: "#f59e0b",
+  confirmed: "#8b5cf6",
   shipped: "#0ea5e9",
   delivered: "#22c55e",
+  cancelled: "#e74c3c",
 };
 
 const STATUS_LABELS: Record<Order["status"], string> = {
   processing: "Processing",
-  shipped: "Shipped",
+  confirmed: "Confirmed",
+  shipped: "Out for Delivery",
   delivered: "Delivered",
+  cancelled: "Cancelled",
 };
+
+const formatNaira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
 export default function OrdersScreen() {
   const colors = useColors();
@@ -83,7 +89,13 @@ export default function OrdersScreen() {
           renderItem={({ item: order }) => {
             const statusColor = STATUS_COLORS[order.status];
             return (
-              <View
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/order/[id]",
+                    params: { id: order.id },
+                  } as any)
+                }
                 style={[
                   styles.orderCard,
                   {
@@ -141,7 +153,7 @@ export default function OrdersScreen() {
                       x{item.quantity}
                     </Text>
                     <Text style={[styles.orderItemPrice, { color: colors.foreground }]}>
-                      ${(item.sizePrice * item.quantity).toFixed(2)}
+                      {formatNaira(item.sizePrice * item.quantity)}
                     </Text>
                   </View>
                 ))}
@@ -163,10 +175,20 @@ export default function OrdersScreen() {
                     </Text>
                   </View>
                   <Text style={[styles.orderTotal, { color: colors.foreground }]}>
-                    ${order.total.toFixed(2)}
+                    {formatNaira(order.total)}
                   </Text>
                 </View>
-              </View>
+
+                {/* View tracking */}
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.trackRow}>
+                  <Feather name="navigation" size={14} color={colors.primary} />
+                  <Text style={[styles.trackText, { color: colors.primary }]}>
+                    View tracking details
+                  </Text>
+                  <Feather name="chevron-right" size={16} color={colors.primary} />
+                </View>
+              </Pressable>
             );
           }}
         />
@@ -290,5 +312,16 @@ const styles = StyleSheet.create({
   orderTotal: {
     fontSize: 20,
     fontWeight: "800",
+  },
+  trackRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingTop: 4,
+  },
+  trackText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "700",
   },
 });
