@@ -21,9 +21,14 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AgeGate } from "@/components/AgeGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { CartProvider } from "@/context/CartContext";
+import {
+  AgeVerificationProvider,
+  useAgeVerification,
+} from "@/context/AgeVerificationContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 import { OrdersProvider } from "@/context/OrdersContext";
 import { ProductsProvider } from "@/context/ProductsContext";
@@ -97,6 +102,17 @@ function RootLayoutNav() {
   );
 }
 
+function GatedApp() {
+  const { isLoading, isVerified } = useAgeVerification();
+  if (isLoading) {
+    return <View style={{ flex: 1, backgroundColor: "#0d0b08" }} />;
+  }
+  if (!isVerified) {
+    return <AgeGate />;
+  }
+  return <RootLayoutNav />;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -120,24 +136,26 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView>
             <KeyboardProvider>
-              <AuthProvider>
-                <ProductsProvider>
-                  <CartProvider>
-                    <FavoritesProvider>
-                      <OrdersProvider>
-                        <View style={{ flex: 1 }}>
-                          <RootLayoutNav />
-                          {!splashDone && (
-                            <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                              <AppSplash onDone={() => setSplashDone(true)} />
-                            </View>
-                          )}
-                        </View>
-                      </OrdersProvider>
-                    </FavoritesProvider>
-                  </CartProvider>
-                </ProductsProvider>
-              </AuthProvider>
+              <AgeVerificationProvider>
+                <AuthProvider>
+                  <ProductsProvider>
+                    <CartProvider>
+                      <FavoritesProvider>
+                        <OrdersProvider>
+                          <View style={{ flex: 1 }}>
+                            <GatedApp />
+                            {!splashDone && (
+                              <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                                <AppSplash onDone={() => setSplashDone(true)} />
+                              </View>
+                            )}
+                          </View>
+                        </OrdersProvider>
+                      </FavoritesProvider>
+                    </CartProvider>
+                  </ProductsProvider>
+                </AuthProvider>
+              </AgeVerificationProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
