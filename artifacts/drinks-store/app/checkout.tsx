@@ -1,8 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -18,8 +20,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useOffers } from "@/context/OffersContext";
 import { useOrders } from "@/context/OrdersContext";
 import { useColors } from "@/hooks/useColors";
+import { api } from "@/lib/api";
 
-const PAYMENT_METHODS = ["Bank Transfer", "Card Payment", "USSD", "Pay on Delivery"];
+const PAYMENT_METHODS = ["Pay with Paystack", "Pay on Delivery"];
 const formatNaira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
 export default function CheckoutScreen() {
@@ -31,12 +34,16 @@ export default function CheckoutScreen() {
   const { validatePromoCode } = useOffers();
 
   const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [placed, setPlaced] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [paymentNote, setPaymentNote] = useState<string>("");
+  const [paymentError, setPaymentError] = useState<string>("");
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<{
@@ -77,29 +84,89 @@ export default function CheckoutScreen() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = "Name is required";
+    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim()))
+      e.email = "Valid email is required";
     if (!address.trim()) e.address = "Delivery address is required";
     if (!phone.trim()) e.phone = "Phone number is required";
     return e;
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     const e = validate();
     if (Object.keys(e).length > 0) {
       setErrors(e);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const id = addOrder(items, finalTotal, {
-      name,
-      address: `${address} · ${phone}${
-        appliedPromo ? ` · Promo: ${appliedPromo.code}` : ""
-      }`,
-      paymentMethod,
-    });
-    setOrderId(id);
-    clearCart();
-    setPlaced(true);
+    setSubmitting(true);
+    setPaymentError("");
+    try {
+      const { order } = await api.createOrder({
+        customerName: name.trim(),
+        customerEmail: email.trim(),
+        customerPhone: phone.trim(),
+        deliveryAddress: address.trim(),
+        items: items.map((item) => ({
+          drinkId: String(item.drinkId),
+          drinkName: item.drinkName,
+          sizeLabel: item.sizeLabel,
+          sizePrice: item.sizePrice,
+          quantity: item.quantity,
+        })),
+        subtotal: total,
+        discount: discount,
+        promoCode: appliedPromo?.code,
+        paymentMethod: paymentMethod === "Pay with Paystack" ? "paystack" : "cod",
+      });
+
+      const localId = addOrder(items, finalTotal, {
+        name,
+        address: `${address} · ${phone}${
+          appliedPromo ? ` · Promo: ${appliedPromo.code}` : ""
+        }`,
+        paymentMethod,
+      });
+
+      if (paymentMethod === "Pay with Paystack") {
+        const init = await api.initializePayment(order.id);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        const result = await WebBrowser.openBrowserAsync(init.authorizationUrl);
+        // After the browser closes, verify the transaction
+        try {
+          const verify = await api.verifyPayment(init.reference);
+          if (verify.status === "success") {
+            setPaymentNote("Payment successful — your order is confirmed.");
+          } else if (verify.status === "failed") {
+            setPaymentNote("Payment was not completed. You can retry later.");
+          } else {
+            setPaymentNote(
+              "Payment is still pending verification. We'll confirm shortly.",
+            );
+          }
+        } catch {
+          setPaymentNote(
+            "We couldn't verify the payment automatically. Check your order soon.",
+          );
+        }
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setPaymentNote(
+          "Order received. We'll contact you via WhatsApp to arrange delivery & payment.",
+        );
+      }
+
+      setOrderId(localId);
+      clearCart();
+      setPlaced(true);
+    } catch (err) {
+      setPaymentError(
+        err instanceof Error ? err.message : "Could not place order. Try again.",
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (placed) {
@@ -121,8 +188,8 @@ export default function CheckoutScreen() {
           Order Placed!
         </Text>
         <Text style={[styles.successSub, { color: colors.mutedForeground }]}>
-          Your order #{orderId.slice(-6).toUpperCase()} has been received.{"\n"}
-          We'll contact you shortly via WhatsApp to confirm.
+          Your order #{orderId.slice(-6).toUpperCase()} has been received.
+          {paymentNote ? `\n${paymentNote}` : ""}
         </Text>
         <Pressable
           onPress={() =>
@@ -344,6 +411,35 @@ export default function CheckoutScreen() {
           </View>
 
           <View>
+            <Text style={[styles.inputLabel, { color: colors.foreground }]}>Email</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.secondary,
+                  borderColor: errors.email ? colors.destructive : colors.border,
+                  borderRadius: colors.radius,
+                  color: colors.foreground,
+                },
+              ]}
+              placeholder="you@example.com"
+              placeholderTextColor={colors.mutedForeground}
+              value={email}
+              onChangeText={(t) => {
+                setEmail(t);
+                if (errors.email) setErrors((e) => ({ ...e, email: "" }));
+              }}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            {errors.email && (
+              <Text style={[styles.error, { color: colors.destructive }]}>
+                {errors.email}
+              </Text>
+            )}
+          </View>
+
+          <View>
             <Text style={[styles.inputLabel, { color: colors.foreground }]}>Phone Number</Text>
             <TextInput
               style={[
@@ -468,16 +564,45 @@ export default function CheckoutScreen() {
           },
         ]}
       >
+        {paymentError ? (
+          <Text
+            style={{
+              color: colors.destructive,
+              fontSize: 13,
+              marginBottom: 10,
+              textAlign: "center",
+            }}
+          >
+            {paymentError}
+          </Text>
+        ) : null}
         <Pressable
           onPress={handlePlaceOrder}
+          disabled={submitting}
           style={[
             styles.placeOrderBtn,
-            { backgroundColor: colors.primary, borderRadius: colors.radius },
+            {
+              backgroundColor: submitting ? colors.muted : colors.primary,
+              borderRadius: colors.radius,
+              opacity: submitting ? 0.8 : 1,
+            },
           ]}
         >
-          <Feather name="check" size={20} color={colors.primaryForeground} />
+          {submitting ? (
+            <ActivityIndicator color={colors.primaryForeground} />
+          ) : (
+            <Feather
+              name={paymentMethod === "Pay with Paystack" ? "credit-card" : "check"}
+              size={20}
+              color={colors.primaryForeground}
+            />
+          )}
           <Text style={[styles.placeOrderText, { color: colors.primaryForeground }]}>
-            Place Order · {formatNaira(finalTotal)}
+            {submitting
+              ? "Processing..."
+              : paymentMethod === "Pay with Paystack"
+              ? `Pay ${formatNaira(finalTotal)}`
+              : `Place Order · ${formatNaira(finalTotal)}`}
           </Text>
         </Pressable>
       </View>

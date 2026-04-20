@@ -1,0 +1,151 @@
+import { Platform } from "react-native";
+
+function getBaseUrl(): string {
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return window.location.origin;
+    }
+    return "";
+  }
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (!domain) {
+    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+  }
+  return `https://${domain}`;
+}
+
+export const apiUrl = (path: string) =>
+  `${getBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+
+export interface ApiOrderItem {
+  drinkId: string;
+  drinkName: string;
+  sizeLabel: string;
+  sizePrice: number;
+  quantity: number;
+  imageUrl?: string;
+}
+
+export interface ApiOrder {
+  id: string;
+  reference: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  deliveryCity: string | null;
+  deliveryState: string | null;
+  items: ApiOrderItem[];
+  subtotalKobo: number;
+  discountKobo: number;
+  totalKobo: number;
+  promoCode: string | null;
+  paymentMethod: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiTransaction {
+  id: string;
+  orderId: string;
+  reference: string;
+  provider: string;
+  amountKobo: number;
+  currency: string;
+  status: string;
+  channel: string | null;
+  gatewayResponse: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(apiUrl(path), {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+  const text = await res.text();
+  let body: unknown = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = text;
+  }
+  if (!res.ok) {
+    const message =
+      (body && typeof body === "object" && "error" in body
+        ? String((body as { error: unknown }).error)
+        : null) ?? `Request failed (${res.status})`;
+    throw new Error(message);
+  }
+  return body as T;
+}
+
+export interface CreateOrderInput {
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  deliveryCity?: string;
+  deliveryState?: string;
+  items: ApiOrderItem[];
+  subtotal: number;
+  discount: number;
+  promoCode?: string;
+  paymentMethod?: string;
+  notes?: string;
+}
+
+export const api = {
+  createOrder: (input: CreateOrderInput) =>
+    request<{ order: ApiOrder }>("/api/orders", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  listOrders: () => request<{ orders: ApiOrder[] }>("/api/orders"),
+  getOrder: (id: string) =>
+    request<{ order: ApiOrder; transactions: ApiTransaction[] }>(
+      `/api/orders/${id}`,
+    ),
+  updateOrderStatus: (id: string, fulfillmentStatus: string) =>
+    request<{ order: ApiOrder }>(`/api/orders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ fulfillmentStatus }),
+    }),
+  initializePayment: (orderId: string, callbackUrl?: string) =>
+    request<{ authorizationUrl: string; reference: string; orderId: string }>(
+      "/api/payments/initialize",
+      {
+        method: "POST",
+        body: JSON.stringify({ orderId, callbackUrl }),
+      },
+    ),
+  verifyPayment: (reference: string) =>
+    request<{
+      status: "success" | "failed" | "pending";
+      order: ApiOrder;
+      paystack: {
+        reference: string;
+        amount: number;
+        channel: string | null;
+        paidAt: string | null;
+        gatewayResponse: string | null;
+      };
+    }>(`/api/payments/verify/${encodeURIComponent(reference)}`),
+  listTransactions: () =>
+    request<{
+      transactions: { transaction: ApiTransaction; order: ApiOrder | null }[];
+    }>("/api/transactions"),
+};
+
+export const formatKobo = (kobo: number) =>
+  `₦${(kobo / 100).toLocaleString("en-NG", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;

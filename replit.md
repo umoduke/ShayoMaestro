@@ -49,8 +49,21 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
   - `getProductImage(id, imageUri)` helper supports both local bundled images and remote URLs for admin-added products
 
 ### API Server (`artifacts/api-server`)
-- Express 5 + TypeScript backend
-- Health check route at `/api/healthz`
+- Express 5 + TypeScript backend, port 8080
+- Routes:
+  - `GET /api/healthz`
+  - `POST/GET/PATCH /api/orders` — server is **authoritative for pricing**: it ignores client subtotal and recomputes from `src/lib/catalog.ts` (kept in sync with `artifacts/drinks-store/data/drinks.ts`)
+  - `GET /api/orders/:id`, `GET /api/transactions`
+  - `POST /api/payments/initialize` — creates a Paystack transaction tied to an order and returns checkout URL
+  - `GET /api/payments/verify/:reference` — verifies with Paystack, validates returned amount/currency/reference match stored transaction before marking order paid
+  - `GET /api/payments/public-key`
+- Postgres via Drizzle (`@workspace/db`): `orders` + `transactions` tables, kobo (NGN×100) integer amounts, GIG-ready customer/delivery fields
+- Paystack TEST keys via `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY`
+- ⚠️ Admin/order/transaction endpoints are **not auth-protected** — MVP only
+
+### Mobile checkout flow
+- Collects email, calls `POST /orders` (server prices the cart), then `POST /payments/initialize`, opens Paystack URL via `expo-web-browser`, calls `GET /payments/verify/:ref` on return, navigates to `/order/[id]`
+- Admin Transactions screen (`/admin/transactions`) shows stats + per-tx audit details
 
 ## Key Commands
 

@@ -184,6 +184,31 @@ export default function AdminDashboard() {
             )}
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/admin/transactions" as any)}
+            style={[
+              styles.actionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: colors.radius,
+              },
+            ]}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: "#27ae6022" }]}>
+              <Feather name="credit-card" size={22} color="#27ae60" />
+            </View>
+            <View style={styles.actionText}>
+              <Text style={[styles.actionTitle, { color: colors.foreground }]}>
+                Transactions
+              </Text>
+              <Text style={[styles.actionSub, { color: colors.mutedForeground }]}>
+                Audit Paystack payments and refunds
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
         </View>
 
         {/* Recent Orders */}
