@@ -30,6 +30,7 @@ import {
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
+import { OffersProvider } from "@/context/OffersContext";
 import { OrdersProvider } from "@/context/OrdersContext";
 import { ProductsProvider } from "@/context/ProductsContext";
 
@@ -98,6 +99,7 @@ function RootLayoutNav() {
       <Stack.Screen name="auth/login" options={{ headerShown: false }} />
       <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
       <Stack.Screen name="admin" options={{ headerShown: false }} />
+      <Stack.Screen name="offers" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -139,6 +141,7 @@ export default function RootLayout() {
               <AgeVerificationProvider>
                 <AuthProvider>
                   <ProductsProvider>
+                    <OffersProvider>
                     <CartProvider>
                       <FavoritesProvider>
                         <OrdersProvider>
@@ -153,6 +156,7 @@ export default function RootLayout() {
                         </OrdersProvider>
                       </FavoritesProvider>
                     </CartProvider>
+                    </OffersProvider>
                   </ProductsProvider>
                 </AuthProvider>
               </AgeVerificationProvider>

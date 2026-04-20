@@ -15,6 +15,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useOffers } from "@/context/OffersContext";
 import { useOrders } from "@/context/OrdersContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -27,6 +28,7 @@ export default function CheckoutScreen() {
   const { items, total, clearCart } = useCart();
   const { user } = useAuth();
   const { addOrder } = useOrders();
+  const { validatePromoCode } = useOffers();
 
   const [name, setName] = useState(user?.name ?? "");
   const [address, setAddress] = useState("");
@@ -35,6 +37,39 @@ export default function CheckoutScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [placed, setPlaced] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [promoInput, setPromoInput] = useState("");
+  const [promoError, setPromoError] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discount: number;
+    label: string;
+  } | null>(null);
+
+  const discount = appliedPromo?.discount ?? 0;
+  const finalTotal = Math.max(total - discount, 0);
+
+  const handleApplyPromo = () => {
+    setPromoError("");
+    const result = validatePromoCode(promoInput, total, !!user);
+    if (!result.success || !result.offer || !result.discountAmount) {
+      setPromoError(result.error ?? "Invalid code");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+    setAppliedPromo({
+      code: result.offer.code,
+      discount: result.discountAmount,
+      label: result.offer.title,
+    });
+    setPromoInput("");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoError("");
+    Haptics.selectionAsync();
+  };
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
@@ -55,9 +90,11 @@ export default function CheckoutScreen() {
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const id = addOrder(items, total, {
+    const id = addOrder(items, finalTotal, {
       name,
-      address: `${address} · ${phone}`,
+      address: `${address} · ${phone}${
+        appliedPromo ? ` · Promo: ${appliedPromo.code}` : ""
+      }`,
       paymentMethod,
     });
     setOrderId(id);
@@ -156,13 +193,121 @@ export default function CheckoutScreen() {
             </View>
           ))}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.totalRow}>
-            <Text style={[styles.totalLabel, { color: colors.foreground }]}>Total</Text>
-            <Text style={[styles.totalAmount, { color: colors.primary }]}>
+          <View style={styles.subRow}>
+            <Text style={[styles.subLabel, { color: colors.mutedForeground }]}>Subtotal</Text>
+            <Text style={[styles.subValue, { color: colors.foreground }]}>
               {formatNaira(total)}
             </Text>
           </View>
+          {appliedPromo && (
+            <View style={styles.subRow}>
+              <Text style={[styles.subLabel, { color: "#10b981" }]}>
+                Discount ({appliedPromo.code})
+              </Text>
+              <Text style={[styles.subValue, { color: "#10b981" }]}>
+                -{formatNaira(discount)}
+              </Text>
+            </View>
+          )}
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={styles.totalRow}>
+            <Text style={[styles.totalLabel, { color: colors.foreground }]}>Total</Text>
+            <Text style={[styles.totalAmount, { color: colors.primary }]}>
+              {formatNaira(finalTotal)}
+            </Text>
+          </View>
         </View>
+
+        {/* Promo Code */}
+        <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 24 }]}>
+          Promo Code
+        </Text>
+        {appliedPromo ? (
+          <View
+            style={[
+              styles.appliedPromo,
+              { backgroundColor: "#10b98114", borderColor: "#10b98155" },
+            ]}
+          >
+            <Feather name="check-circle" size={18} color="#10b981" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.appliedPromoCode, { color: colors.foreground }]}>
+                {appliedPromo.code}
+              </Text>
+              <Text style={[styles.appliedPromoLabel, { color: colors.mutedForeground }]}>
+                {appliedPromo.label} · You save {formatNaira(discount)}
+              </Text>
+            </View>
+            <Pressable onPress={handleRemovePromo} style={styles.removePromoBtn}>
+              <Feather name="x" size={16} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <View style={styles.promoRow}>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    flex: 1,
+                    backgroundColor: colors.secondary,
+                    borderColor: promoError ? colors.destructive : colors.border,
+                    borderRadius: colors.radius,
+                    color: colors.foreground,
+                    letterSpacing: 1,
+                  },
+                ]}
+                placeholder="Enter code"
+                placeholderTextColor={colors.mutedForeground}
+                value={promoInput}
+                onChangeText={(t) => {
+                  setPromoInput(t.toUpperCase());
+                  if (promoError) setPromoError("");
+                }}
+                autoCapitalize="characters"
+              />
+              <Pressable
+                onPress={handleApplyPromo}
+                disabled={!promoInput.trim()}
+                style={[
+                  styles.applyBtn,
+                  {
+                    backgroundColor: promoInput.trim() ? colors.primary : colors.muted,
+                    borderRadius: colors.radius,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.applyBtnText,
+                    {
+                      color: promoInput.trim()
+                        ? colors.primaryForeground
+                        : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  Apply
+                </Text>
+              </Pressable>
+            </View>
+            {promoError ? (
+              <Text style={[styles.error, { color: colors.destructive }]}>
+                {promoError}
+              </Text>
+            ) : (
+              <Pressable
+                onPress={() => router.push("/offers" as any)}
+                style={styles.viewOffersLink}
+              >
+                <Feather name="gift" size={13} color={colors.primary} />
+                <Text style={[styles.viewOffersText, { color: colors.primary }]}>
+                  View available offers
+                </Text>
+              </Pressable>
+            )}
+          </>
+        )}
 
         {/* Delivery Details */}
         <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 24 }]}>
@@ -330,7 +475,7 @@ export default function CheckoutScreen() {
         >
           <Feather name="check" size={20} color={colors.primaryForeground} />
           <Text style={[styles.placeOrderText, { color: colors.primaryForeground }]}>
-            Place Order · {formatNaira(total)}
+            Place Order · {formatNaira(finalTotal)}
           </Text>
         </Pressable>
       </View>
@@ -390,6 +535,63 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 15, fontWeight: "600" },
   totalAmount: { fontSize: 20, fontWeight: "800" },
+  subRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  subLabel: { fontSize: 13 },
+  subValue: { fontSize: 13, fontWeight: "600" },
+  promoRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "stretch",
+  },
+  applyBtn: {
+    paddingHorizontal: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applyBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  appliedPromo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderRadius: 10,
+  },
+  appliedPromoCode: {
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  appliedPromoLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  removePromoBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewOffersLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    alignSelf: "flex-start",
+  },
+  viewOffersText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
   inputLabel: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
   input: { padding: 14, fontSize: 15, borderWidth: 1 },
   addressInput: { minHeight: 80, textAlignVertical: "top" },

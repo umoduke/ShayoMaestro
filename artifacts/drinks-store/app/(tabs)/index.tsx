@@ -114,13 +114,39 @@ export default function HomeScreen() {
       )}
 
       {/* Search Bar */}
-      <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+      <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
         <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search spirits, brands..."
         />
       </View>
+
+      {/* Offers / Sign-up CTA banner */}
+      {!isSearching && (
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            router.push("/offers" as any);
+          }}
+          style={styles.offersBanner}
+        >
+          <View style={styles.offersBannerIcon}>
+            <Feather name="gift" size={22} color="#0d0b08" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.offersBannerTitle}>
+              {user ? "Your Member Offers" : "Unlock 10% Off Today"}
+            </Text>
+            <Text style={styles.offersBannerSub}>
+              {user
+                ? "Tap to view your exclusive promo codes"
+                : "Sign up free for special discounts & deals"}
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={20} color="#d4a843" />
+        </Pressable>
+      )}
 
       {isSearching ? (
         <View>
@@ -278,6 +304,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ffffff12",
+  },
+  offersBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginHorizontal: 16,
+    marginBottom: 22,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "#0d0b08",
+    borderWidth: 1,
+    borderColor: "#d4a84355",
+  },
+  offersBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#d4a843",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  offersBannerTitle: {
+    color: "#f5e6c8",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  offersBannerSub: {
+    color: "#9a8a6c",
+    fontSize: 12,
   },
   banner: {
     flexDirection: "row",
