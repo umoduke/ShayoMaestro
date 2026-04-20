@@ -1,74 +1,161 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { Drink, DRINKS } from "@/data/drinks";
+import { api, type ApiProduct } from "@/lib/api";
 
 interface ProductsContextType {
   products: Drink[];
-  addProduct: (product: Omit<Drink, "id">) => string;
-  updateProduct: (id: string, updates: Partial<Omit<Drink, "id">>) => void;
-  removeProduct: (id: string) => void;
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+  addProduct: (product: Omit<Drink, "id">) => Promise<string | null>;
+  updateProduct: (
+    id: string,
+    updates: Partial<Omit<Drink, "id">>,
+  ) => Promise<void>;
+  removeProduct: (id: string) => Promise<void>;
   getProductById: (id: string) => Drink | undefined;
-  resetToDefaults: () => void;
 }
 
 const ProductsContext = createContext<ProductsContextType | null>(null);
-const STORAGE_KEY = "asl_products_v1";
+
+function apiToDrink(p: ApiProduct): Drink {
+  return {
+    id: p.id,
+    name: p.name,
+    shortName: p.shortName,
+    category: p.category as Drink["category"],
+    price: p.price,
+    currency: p.currency || "₦",
+    rating: p.rating,
+    reviewCount: p.reviewCount,
+    description: p.description,
+    shortDescription: p.shortDescription,
+    ingredients: p.ingredients ?? [],
+    sizes: p.sizes ?? [],
+    imageUri: p.imageUri,
+    imageColor: p.imageColor,
+    accentColor: p.accentColor,
+    featured: p.featured,
+    tags: p.tags ?? [],
+    origin: p.origin ?? undefined,
+    abv: p.abv ?? undefined,
+  };
+}
+
+function drinkToInput(d: Partial<Drink> & { sizes: Drink["sizes"]; name: string }) {
+  return {
+    name: d.name,
+    shortName: d.shortName ?? d.name,
+    category: d.category ?? "all",
+    price: d.price ?? d.sizes[0]?.price ?? 0,
+    currency: d.currency ?? "₦",
+    rating: d.rating ?? 0,
+    reviewCount: d.reviewCount ?? 0,
+    description: d.description ?? "",
+    shortDescription: d.shortDescription ?? "",
+    ingredients: d.ingredients ?? [],
+    sizes: d.sizes,
+    imageUri: d.imageUri ?? "",
+    imageColor: d.imageColor ?? "#1a1a1a",
+    accentColor: d.accentColor ?? "#ff6b35",
+    featured: d.featured ?? false,
+    tags: d.tags ?? [],
+    origin: d.origin ?? null,
+    abv: d.abv ?? null,
+  };
+}
 
 export function ProductsProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Drink[]>(DRINKS);
-  const initialized = useRef(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((data) => {
-      if (data) {
-        try {
-          const parsed = JSON.parse(data);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setProducts(parsed);
-          }
-        } catch {
-          // ignore
-        }
+  const refresh = useCallback(async () => {
+    try {
+      setError(null);
+      const { products: rows } = await api.listProducts();
+      if (rows.length > 0) {
+        setProducts(rows.map(apiToDrink));
       }
-      initialized.current = true;
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load products");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (initialized.current) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+    void refresh();
+  }, [refresh]);
+
+  const addProduct = useCallback(
+    async (product: Omit<Drink, "id">): Promise<string | null> => {
+      try {
+        const { product: created } = await api.createProduct(
+          drinkToInput(product as Drink),
+        );
+        const drink = apiToDrink(created);
+        setProducts((prev) => [...prev, drink]);
+        return drink.id;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to add product");
+        return null;
+      }
+    },
+    [],
+  );
+
+  const updateProduct = useCallback(
+    async (id: string, updates: Partial<Omit<Drink, "id">>) => {
+      const current = products.find((p) => p.id === id);
+      if (!current) return;
+      const merged = { ...current, ...updates };
+      try {
+        const { product: updated } = await api.updateProduct(
+          id,
+          drinkToInput(merged),
+        );
+        const drink = apiToDrink(updated);
+        setProducts((prev) => prev.map((p) => (p.id === id ? drink : p)));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to update product");
+      }
+    },
+    [products],
+  );
+
+  const removeProduct = useCallback(async (id: string) => {
+    try {
+      await api.deleteProduct(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete product");
     }
-  }, [products]);
-
-  const addProduct = useCallback((product: Omit<Drink, "id">): string => {
-    const id = "p_" + Date.now().toString() + Math.random().toString(36).substr(2, 4);
-    const newProduct: Drink = { ...product, id };
-    setProducts((prev) => [...prev, newProduct]);
-    return id;
-  }, []);
-
-  const updateProduct = useCallback((id: string, updates: Partial<Omit<Drink, "id">>) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
-  }, []);
-
-  const removeProduct = useCallback((id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
   const getProductById = useCallback(
     (id: string) => products.find((p) => p.id === id),
-    [products]
+    [products],
   );
-
-  const resetToDefaults = useCallback(() => {
-    setProducts(DRINKS);
-  }, []);
 
   return (
     <ProductsContext.Provider
-      value={{ products, addProduct, updateProduct, removeProduct, getProductById, resetToDefaults }}
+      value={{
+        products,
+        loading,
+        error,
+        refresh,
+        addProduct,
+        updateProduct,
+        removeProduct,
+        getProductById,
+      }}
     >
       {children}
     </ProductsContext.Provider>

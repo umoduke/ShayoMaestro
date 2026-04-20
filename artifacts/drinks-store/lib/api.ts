@@ -102,7 +102,55 @@ export interface CreateOrderInput {
   notes?: string;
 }
 
+export interface ApiProductSize {
+  label: string;
+  price: number;
+}
+
+export interface ApiProduct {
+  id: string;
+  name: string;
+  shortName: string;
+  category: string;
+  price: number;
+  currency: string;
+  rating: number;
+  reviewCount: number;
+  description: string;
+  shortDescription: string;
+  ingredients: string[];
+  sizes: ApiProductSize[];
+  imageUri: string;
+  imageColor: string;
+  accentColor: string;
+  featured: boolean;
+  tags: string[];
+  origin: string | null;
+  abv: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProductInput = Omit<
+  ApiProduct,
+  "id" | "createdAt" | "updatedAt" | "sortOrder"
+> & { sortOrder?: number };
+
 export const api = {
+  listProducts: () => request<{ products: ApiProduct[] }>("/api/products"),
+  createProduct: (input: ProductInput) =>
+    request<{ product: ApiProduct }>("/api/products", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateProduct: (id: string, input: ProductInput) =>
+    request<{ product: ApiProduct }>(`/api/products/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  deleteProduct: (id: string) =>
+    request<{ ok: true }>(`/api/products/${id}`, { method: "DELETE" }),
   createOrder: (input: CreateOrderInput) =>
     request<{ order: ApiOrder }>("/api/orders", {
       method: "POST",

@@ -78,7 +78,7 @@ export default function ProductFormScreen() {
     return e;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const e = validate();
     if (Object.keys(e).length > 0) {
       setErrors(e);
@@ -108,10 +108,10 @@ export default function ProductFormScreen() {
     };
 
     if (isEditing && id) {
-      updateProduct(id, productData);
+      await updateProduct(id, productData);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
-      addProduct(productData);
+      await addProduct(productData);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     router.back();

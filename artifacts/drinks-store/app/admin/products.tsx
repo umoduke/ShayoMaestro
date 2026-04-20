@@ -24,7 +24,7 @@ export default function AdminProductsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { products, removeProduct, resetToDefaults } = useProducts();
+  const { products, removeProduct, refresh } = useProducts();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -49,18 +49,7 @@ export default function AdminProductsScreen() {
   };
 
   const handleReset = () => {
-    const doReset = () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      resetToDefaults();
-    };
-    if (Platform.OS === "web") {
-      if (confirm("Reset catalog to default 4 products? This cannot be undone.")) doReset();
-    } else {
-      Alert.alert("Reset Catalog", "Reset to default 4 products? This cannot be undone.", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Reset", style: "destructive", onPress: doReset },
-      ]);
-    }
+    void refresh();
   };
 
   return (

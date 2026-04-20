@@ -45,14 +45,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
   - Product Management (`/admin/products`): list all products with edit/delete, FAB to add new
   - Product Form (`/admin/product-form`): add or edit product — name, category, price, description, image URL, origin, ABV, tags, colors
   - Order Management (`/admin/orders`): filter by status, expand order to see items/address/payment, update status (processing/confirmed/shipped/delivered/cancelled), remove order
-  - ProductsContext: dynamic CRUD with AsyncStorage persistence (`asl_products_v1`), initialized from DRINKS defaults
+  - ProductsContext: now backed by the API (`/api/products`) — admin add/edit/delete persists to PostgreSQL and is shared across all clients. Falls back to bundled `DRINKS` defaults only if the API is unreachable.
   - `getProductImage(id, imageUri)` helper supports both local bundled images and remote URLs for admin-added products
 
 ### API Server (`artifacts/api-server`)
 - Express 5 + TypeScript backend, port 8080
 - Routes:
   - `GET /api/healthz`
-  - `POST/GET/PATCH /api/orders` — server is **authoritative for pricing**: it ignores client subtotal and recomputes from `src/lib/catalog.ts` (kept in sync with `artifacts/drinks-store/data/drinks.ts`)
+  - `GET/POST/PATCH/DELETE /api/products` — single source of truth for catalog (DB-backed). Auto-seeded with the 4 default drinks on first server boot if `products` table is empty.
+  - `POST/GET/PATCH /api/orders` — server is **authoritative for pricing**: it ignores client subtotal and recomputes from the `products` table (any unknown drinkId/sizeLabel is rejected)
   - `GET /api/orders/:id`, `GET /api/transactions`
   - `POST /api/payments/initialize` — creates a Paystack transaction tied to an order and returns checkout URL
   - `GET /api/payments/verify/:reference` — verifies with Paystack, validates returned amount/currency/reference match stored transaction before marking order paid

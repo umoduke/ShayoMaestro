@@ -1,8 +1,13 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, transactionsTable } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import {
+  db,
+  ordersTable,
+  productsTable,
+  transactionsTable,
+  type OrderLineItem,
+} from "@workspace/db";
+import { desc, eq, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { lookupPrice } from "../lib/catalog";
 
 const router: IRouter = Router();
 
@@ -14,26 +19,43 @@ router.post("/orders", async (req, res) => {
       return res.status(400).json({ error: "items required" });
     }
 
-    const items: Array<Record<string, unknown>> = [];
+    const drinkIds: string[] = Array.from(
+      new Set(
+        rawItems
+          .map((r: any) => String(r?.drinkId ?? r?.id ?? ""))
+          .filter((s: string) => s.length > 0)
+      )
+    );
+    const catalogRows = drinkIds.length
+      ? await db
+          .select()
+          .from(productsTable)
+          .where(inArray(productsTable.id, drinkIds))
+      : [];
+    const catalogById = new Map(catalogRows.map((p) => [p.id, p]));
+
+    const items: OrderLineItem[] = [];
     let subtotalNaira = 0;
     for (const raw of rawItems) {
       const drinkId = String(raw?.drinkId ?? raw?.id ?? "");
       const sizeLabel = String(raw?.sizeLabel ?? raw?.size ?? "");
       const quantity = Math.max(1, Math.floor(Number(raw?.quantity ?? 1)));
-      const unitPrice = lookupPrice(drinkId, sizeLabel);
-      if (unitPrice == null) {
+      const product = catalogById.get(drinkId);
+      const sizeRow = product?.sizes.find((s) => s.label === sizeLabel);
+      if (!product || !sizeRow) {
         return res
           .status(400)
           .json({ error: `Invalid product: ${drinkId} / ${sizeLabel}` });
       }
+      const unitPrice = sizeRow.price;
       subtotalNaira += unitPrice * quantity;
       items.push({
         drinkId,
-        name: raw?.name ?? null,
+        drinkName: product.name,
         sizeLabel,
+        sizePrice: unitPrice,
         quantity,
-        unitPrice,
-        lineTotal: unitPrice * quantity,
+        imageUrl: product.imageUri || undefined,
       });
     }
 
