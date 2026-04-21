@@ -19,6 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import { useProducts } from "@/context/ProductsContext";
 import { useAuth } from "@/context/AuthContext";
 import { DrinkCategory, CATEGORIES } from "@/data/drinks";
+import { ProductImage } from "@/components/ProductImage";
 
 const COLOR_OPTIONS = [
   { label: "Dark Navy", value: "#1a3040" },
@@ -278,10 +279,35 @@ export default function ProductFormScreen() {
           keyboardType="url"
         />
         {imageUri ? (
+          <View
+            style={{
+              marginTop: 8,
+              padding: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: imageColor + "18",
+              alignItems: "center",
+            }}
+          >
+            <ProductImage
+              id={isEditing && id ? id : "preview"}
+              imageUri={imageUri}
+              name={name || "Product"}
+              accentColor={accentColor}
+              style={{ width: 120, height: 140 }}
+              containerStyle={{ width: 120, height: 140, borderRadius: 8 }}
+              resizeMode="contain"
+            />
+            <Text style={[styles.hint, { color: colors.mutedForeground, marginTop: 6 }]}>
+              Live preview — if you see a placeholder, the URL didn't load
+            </Text>
+          </View>
+        ) : (
           <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-            Image will load from this URL
+            No image URL — a placeholder with the accent color will be shown
           </Text>
-        ) : null}
+        )}
 
         <Field
           label="Origin (optional)"

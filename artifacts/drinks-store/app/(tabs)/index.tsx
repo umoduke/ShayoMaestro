@@ -22,7 +22,7 @@ import { useCart } from "@/context/CartContext";
 import { CartBadge } from "@/components/CartBadge";
 import { DrinkCategory, formatPrice } from "@/data/drinks";
 import { useColors } from "@/hooks/useColors";
-import { getProductImage } from "@/assets/images/productImages";
+import { ProductImage } from "@/components/ProductImage";
 import { useProducts } from "@/context/ProductsContext";
 
 const ASL_LOGO = require("@/assets/images/asl-logo.webp");
@@ -187,9 +187,13 @@ export default function HomeScreen() {
               ]}
             >
               {/* Product image on right */}
-              <Image
-                source={getProductImage(featured.id, featured.imageUri)}
+              <ProductImage
+                id={featured.id}
+                imageUri={featured.imageUri}
+                name={featured.shortName ?? featured.name}
+                accentColor={featured.accentColor}
                 style={styles.bannerImage}
+                containerStyle={styles.bannerImage}
                 resizeMode="contain"
               />
               {/* Content */}

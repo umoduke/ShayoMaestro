@@ -18,7 +18,7 @@ import { useColors } from "@/hooks/useColors";
 import { useProducts } from "@/context/ProductsContext";
 import { useAuth } from "@/context/AuthContext";
 import { formatPrice } from "@/data/drinks";
-import { getProductImage } from "@/assets/images/productImages";
+import { ProductImage } from "@/components/ProductImage";
 
 export default function AdminProductsScreen() {
   const colors = useColors();
@@ -116,9 +116,13 @@ export default function AdminProductsScreen() {
             ]}
           >
             <View style={[styles.imageBox, { backgroundColor: item.imageColor + "22" }]}>
-              <Image
-                source={getProductImage(item.id, item.imageUri)}
+              <ProductImage
+                id={item.id}
+                imageUri={item.imageUri}
+                name={item.shortName ?? item.name}
+                accentColor={item.accentColor}
                 style={styles.productImage}
+                containerStyle={styles.productImage}
                 resizeMode="contain"
               />
             </View>

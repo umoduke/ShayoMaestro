@@ -22,7 +22,7 @@ import { useCart } from "@/context/CartContext";
 import { useFavorites } from "@/context/FavoritesContext";
 import { formatPrice } from "@/data/drinks";
 import { useColors } from "@/hooks/useColors";
-import { getProductImage } from "@/assets/images/productImages";
+import { ProductImage } from "@/components/ProductImage";
 import { useProducts } from "@/context/ProductsContext";
 
 export default function DrinkDetailScreen() {
@@ -127,9 +127,13 @@ export default function DrinkDetailScreen() {
 
           {/* Bottle Image */}
           <View style={styles.heroImageContainer}>
-            <Image
-              source={getProductImage(drink.id, drink.imageUri)}
+            <ProductImage
+              id={drink.id}
+              imageUri={drink.imageUri}
+              name={drink.shortName ?? drink.name}
+              accentColor={drink.accentColor}
               style={styles.heroImage}
+              containerStyle={styles.heroImage}
               resizeMode="contain"
             />
           </View>

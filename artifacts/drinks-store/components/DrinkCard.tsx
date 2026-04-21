@@ -19,7 +19,7 @@ import Animated, {
 import { useFavorites } from "@/context/FavoritesContext";
 import { useColors } from "@/hooks/useColors";
 import { Drink, formatPrice } from "@/data/drinks";
-import { getProductImage } from "@/assets/images/productImages";
+import { ProductImage } from "@/components/ProductImage";
 
 interface Props {
   drink: Drink;
@@ -87,9 +87,13 @@ export function DrinkCard({ drink, size = "large" }: Props) {
               },
             ]}
           >
-            <Image
-              source={getProductImage(drink.id, drink.imageUri)}
+            <ProductImage
+              id={drink.id}
+              imageUri={drink.imageUri}
+              name={drink.shortName ?? drink.name}
+              accentColor={drink.accentColor}
               style={styles.productImage}
+              containerStyle={styles.productImage}
               resizeMode="contain"
             />
             {/* Tags */}
