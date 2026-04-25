@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 import { useCart } from "@/context/CartContext";
 import { useColors } from "@/hooks/useColors";
@@ -22,8 +23,8 @@ export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const { items, removeItem, updateQuantity, total, itemCount, clearCart } = useCart();
 
+  const tabBarHeight = useBottomTabBarHeight();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
-  const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -73,7 +74,7 @@ export default function CartScreen() {
             contentContainerStyle={{
               padding: 16,
               gap: 12,
-              paddingBottom: bottomInset + 120,
+              paddingBottom: tabBarHeight + 160,
             }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
@@ -166,7 +167,8 @@ export default function CartScreen() {
               {
                 backgroundColor: colors.background,
                 borderTopColor: colors.border,
-                paddingBottom: bottomInset + 16,
+                bottom: tabBarHeight,
+                paddingBottom: 16,
               },
             ]}
           >
@@ -261,7 +263,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   qtyText: { fontSize: 14, fontWeight: "700", minWidth: 20, textAlign: "center" },
-  footer: { padding: 16, borderTopWidth: 1, gap: 12 },
+  footer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    padding: 16,
+    borderTopWidth: 1,
+    gap: 12,
+  },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
