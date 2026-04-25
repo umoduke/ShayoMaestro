@@ -11,10 +11,15 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 import { useCart } from "@/context/CartContext";
 import { useColors } from "@/hooks/useColors";
+
+const TAB_BAR_CONTENT_HEIGHT = Platform.select({
+  ios: 49,
+  android: 56,
+  default: 60,
+});
 
 const formatNaira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
@@ -23,7 +28,8 @@ export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const { items, removeItem, updateQuantity, total, itemCount, clearCart } = useCart();
 
-  const tabBarHeight = useBottomTabBarHeight();
+  const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+  const tabBarHeight = TAB_BAR_CONTENT_HEIGHT + bottomInset;
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   return (
