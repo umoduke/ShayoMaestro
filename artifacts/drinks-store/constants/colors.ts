@@ -1,81 +1,81 @@
 const colors = {
   light: {
-    text: "#1a0a00",
-    tint: "#b8860b",
+    text: "#2a1430",
+    tint: "#f25c1f",
 
-    background: "#fdf8f0",
-    foreground: "#1a0a00",
+    background: "#fff8f0",
+    foreground: "#2a1430",
 
     card: "#ffffff",
-    cardForeground: "#1a0a00",
+    cardForeground: "#2a1430",
 
-    primary: "#b8860b",
+    primary: "#f25c1f",
     primaryForeground: "#ffffff",
 
-    secondary: "#f5ece0",
-    secondaryForeground: "#4a2c00",
+    secondary: "#ffeadf",
+    secondaryForeground: "#7a2e0f",
 
-    muted: "#f0e8d8",
-    mutedForeground: "#8c6e3a",
+    muted: "#fff0e3",
+    mutedForeground: "#8a6b76",
 
-    accent: "#c9963a",
+    accent: "#e83e7a",
     accentForeground: "#ffffff",
 
-    destructive: "#c0392b",
+    destructive: "#e54747",
     destructiveForeground: "#ffffff",
 
-    border: "#e8d8be",
-    input: "#e8d8be",
+    border: "#f5dcc8",
+    input: "#f5dcc8",
 
-    success: "#2d7a3a",
+    success: "#1ba968",
     successForeground: "#ffffff",
 
-    warning: "#c9963a",
-    warningForeground: "#ffffff",
+    warning: "#f5a524",
+    warningForeground: "#3a1c00",
 
-    overlay: "rgba(26, 10, 0, 0.5)",
-    gradientStart: "#b8860b",
-    gradientEnd: "#8c6400",
-    cardShadow: "#e0cba8",
+    overlay: "rgba(42, 20, 48, 0.5)",
+    gradientStart: "#ff7a3d",
+    gradientEnd: "#e83e7a",
+    cardShadow: "#f0c8b0",
   },
 
   dark: {
-    text: "#f5e6c8",
-    tint: "#d4a843",
+    text: "#fff4e8",
+    tint: "#ff7a3d",
 
-    background: "#0d0b08",
-    foreground: "#f5e6c8",
+    background: "#15101c",
+    foreground: "#fff4e8",
 
-    card: "#1a1510",
-    cardForeground: "#f5e6c8",
+    card: "#221729",
+    cardForeground: "#fff4e8",
 
-    primary: "#d4a843",
-    primaryForeground: "#0d0b08",
+    primary: "#ff7a3d",
+    primaryForeground: "#1a0a00",
 
-    secondary: "#231e16",
-    secondaryForeground: "#d4b87a",
+    secondary: "#2c1f38",
+    secondaryForeground: "#ffd1b8",
 
-    muted: "#1f1a12",
-    mutedForeground: "#8c7a55",
+    muted: "#1d1626",
+    mutedForeground: "#a48aab",
 
-    accent: "#c9963a",
-    accentForeground: "#0d0b08",
+    accent: "#ff3d77",
+    accentForeground: "#ffffff",
 
-    destructive: "#e74c3c",
+    destructive: "#ff5757",
     destructiveForeground: "#ffffff",
 
-    border: "#2e2518",
-    input: "#2e2518",
+    border: "#2e2238",
+    input: "#2e2238",
 
-    success: "#2ecc71",
-    successForeground: "#0d0b08",
+    success: "#42e08d",
+    successForeground: "#0a2417",
 
-    warning: "#d4a843",
-    warningForeground: "#0d0b08",
+    warning: "#ffb547",
+    warningForeground: "#3a1c00",
 
     overlay: "rgba(0, 0, 0, 0.7)",
-    gradientStart: "#d4a843",
-    gradientEnd: "#b8860b",
+    gradientStart: "#ff7a3d",
+    gradientEnd: "#ff3d77",
     cardShadow: "#000000",
   },
 
