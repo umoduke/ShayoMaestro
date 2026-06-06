@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api } from "@/lib/api";
 
 export interface User {
   id: string;
@@ -22,15 +23,37 @@ const USER_KEY = "drinks_store_user";
 const ADMIN_EMAIL = "admin@asl.com";
 const ADMIN_PASSWORD = "ASLadmin2026";
 
+// Checks the server-side admin allowlist. Returns false on any network error
+// so a backend hiccup never blocks a normal user from logging in.
+async function isAllowlistedAdmin(email: string): Promise<boolean> {
+  try {
+    const { isAdmin } = await api.checkAdmin(email);
+    return isAdmin;
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    AsyncStorage.getItem(USER_KEY).then((data) => {
+    AsyncStorage.getItem(USER_KEY).then(async (data) => {
       if (data) {
         try {
-          setUser(JSON.parse(data));
+          const stored: User = JSON.parse(data);
+          setUser(stored);
+          // Re-sync admin status against the server allowlist so promotions
+          // or removals take effect the next time the app is opened.
+          if (stored.email !== ADMIN_EMAIL) {
+            const isAdmin = await isAllowlistedAdmin(stored.email);
+            if (isAdmin !== stored.isAdmin) {
+              const updated = { ...stored, isAdmin };
+              setUser(updated);
+              await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
+            }
+          }
         } catch {
           // ignore
         }
@@ -45,13 +68,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!email.includes("@")) return { success: false, error: "Invalid email address" };
       if (password.length < 6) return { success: false, error: "Password must be at least 6 characters" };
 
+      const normalizedEmail = email.toLowerCase().trim();
+      const isSuperAdmin =
+        normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD;
+      // The super-admin email is ONLY granted admin via its password. Never let
+      // the allowlist check elevate it (the server reports it as admin by
+      // identity), otherwise any password would unlock admin access.
       const isAdmin =
-        email.toLowerCase().trim() === ADMIN_EMAIL && password === ADMIN_PASSWORD;
+        isSuperAdmin ||
+        (normalizedEmail !== ADMIN_EMAIL &&
+          (await isAllowlistedAdmin(normalizedEmail)));
 
       const newUser: User = {
-        id: isAdmin ? "admin" : Date.now().toString(),
-        name: isAdmin ? "Admin" : email.split("@")[0],
-        email: email.toLowerCase().trim(),
+        id: isSuperAdmin ? "admin" : Date.now().toString(),
+        name: isSuperAdmin ? "Admin" : normalizedEmail.split("@")[0],
+        email: normalizedEmail,
         isAdmin,
       };
       setUser(newUser);
@@ -72,11 +103,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!email.includes("@")) return { success: false, error: "Invalid email address" };
       if (password.length < 6)
         return { success: false, error: "Password must be at least 6 characters" };
+      const normalizedEmail = email.toLowerCase().trim();
       const newUser: User = {
         id: Date.now().toString(),
         name,
-        email: email.toLowerCase().trim(),
-        isAdmin: false,
+        email: normalizedEmail,
+        isAdmin:
+          normalizedEmail !== ADMIN_EMAIL &&
+          (await isAllowlistedAdmin(normalizedEmail)),
       };
       setUser(newUser);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(newUser));

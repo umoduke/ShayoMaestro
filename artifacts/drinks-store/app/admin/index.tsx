@@ -209,6 +209,31 @@ export default function AdminDashboard() {
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/admin/admins" as any)}
+            style={[
+              styles.actionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: colors.radius,
+              },
+            ]}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: "#9b59b622" }]}>
+              <Feather name="users" size={22} color="#9b59b6" />
+            </View>
+            <View style={styles.actionText}>
+              <Text style={[styles.actionTitle, { color: colors.foreground }]}>
+                Manage Admins
+              </Text>
+              <Text style={[styles.actionSub, { color: colors.mutedForeground }]}>
+                Promote accounts to admin access
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
         </View>
 
         {/* Recent Orders */}

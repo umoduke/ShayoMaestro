@@ -1,0 +1,1 @@
+- [Admin allowlist auth pitfall](admin-allowlist-auth.md) — identity-based isAdmin check endpoint must never gate the password-protected super-admin login, or any password unlocks admin.

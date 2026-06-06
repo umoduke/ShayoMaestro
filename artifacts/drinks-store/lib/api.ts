@@ -190,7 +190,27 @@ export const api = {
     request<{
       transactions: { transaction: ApiTransaction; order: ApiOrder | null }[];
     }>("/api/transactions"),
+  listAdmins: () => request<{ admins: AdminEmail[] }>("/api/admins"),
+  checkAdmin: (email: string) =>
+    request<{ isAdmin: boolean }>(
+      `/api/admins/check/${encodeURIComponent(email)}`,
+    ),
+  addAdmin: (email: string, addedBy?: string) =>
+    request<{ admin: AdminEmail }>("/api/admins", {
+      method: "POST",
+      body: JSON.stringify({ email, addedBy }),
+    }),
+  removeAdmin: (email: string) =>
+    request<{ ok: true }>(`/api/admins/${encodeURIComponent(email)}`, {
+      method: "DELETE",
+    }),
 };
+
+export interface AdminEmail {
+  email: string;
+  addedBy: string | null;
+  createdAt: string;
+}
 
 export const formatKobo = (kobo: number) =>
   `₦${(kobo / 100).toLocaleString("en-NG", {

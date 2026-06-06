@@ -2,6 +2,7 @@ export type DrinkCategory =
   | "all"
   | "tequila"
   | "whiskey"
+  | "bourbon"
   | "rum"
   | "gin"
   | "vodka"
@@ -33,6 +34,7 @@ export const CATEGORIES: { id: DrinkCategory; label: string; icon: string }[] = 
   { id: "all", label: "All", icon: "grid" },
   { id: "tequila", label: "Tequila", icon: "star" },
   { id: "whiskey", label: "Whiskey", icon: "coffee" },
+  { id: "bourbon", label: "Bourbon", icon: "droplet" },
   { id: "rum", label: "Rum", icon: "sun" },
   { id: "gin", label: "Gin", icon: "feather" },
   { id: "vodka", label: "Vodka", icon: "zap" },
@@ -45,7 +47,7 @@ export const DRINKS: Drink[] = [
     name: "Casamigos Blanco Tequila",
     shortName: "Casamigos Blanco",
     category: "tequila",
-    price: 116000,
+    price: 112350,
     currency: "₦",
     rating: 4.8,
     reviewCount: 312,
@@ -55,7 +57,7 @@ export const DRINKS: Drink[] = [
       "Crisp and smooth premium tequila from 100% blue Weber agave. Fresh citrus notes, light sweetness, perfect for sipping or cocktails.",
     ingredients: ["100% Blue Weber Agave", "Jalisco Highland Water", "Citrus Notes", "Vanilla Hints"],
     sizes: [
-      { label: "750ml", price: 116000 },
+      { label: "750ml", price: 112350 },
       { label: "1 Litre", price: 148000 },
     ],
     imageUri:
@@ -72,7 +74,7 @@ export const DRINKS: Drink[] = [
     name: "Casamigos Reposado Tequila",
     shortName: "Casamigos Reposado",
     category: "tequila",
-    price: 123250,
+    price: 118600,
     currency: "₦",
     rating: 4.9,
     reviewCount: 278,
@@ -82,7 +84,7 @@ export const DRINKS: Drink[] = [
       "Aged 7 months in American oak. Rich caramel, cocoa, and agave notes with exceptional smoothness.",
     ingredients: ["100% Blue Weber Agave", "Caramel", "Cocoa", "Oak Barrel Aged 7 Months"],
     sizes: [
-      { label: "750ml", price: 123250 },
+      { label: "750ml", price: 118600 },
       { label: "1 Litre", price: 158000 },
     ],
     imageUri:

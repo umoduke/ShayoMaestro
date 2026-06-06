@@ -37,9 +37,11 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Logo**: AI-generated ASL brand logo in `assets/images/asl-logo.png`
 - **Contexts**: CartContext, AuthContext, FavoritesContext, OrdersContext, ProductsContext
 - **Theme**: Dark luxury gold — dark bg `#0d0b08`, gold primary `#d4a843`, cream bg (light: `#fdf8f0`)
+- **Catalog**: 32 products across Tequila, Whiskey, and Bourbon categories (Naira pricing). Casamigos Blanco ₦112,350, Casamigos Reposado ₦118,600. `DrinkCategory` includes a `bourbon` category; the user's "Whiskies" list maps to `whiskey`. Note: Johnnie Walker Blue Label is filed under `tequila` because that is where the user listed it (editable via admin panel).
 - **Admin System**:
-  - Credentials: `admin@asl.com` / `ASLadmin2026`
+  - Super-admin credentials: `admin@asl.com` / `ASLadmin2026` (granted admin only via password; never via the allowlist)
   - Admin flag `isAdmin: boolean` on `User` type in AuthContext
+  - **Promote-to-admin**: server-backed allowlist (`admin_emails` table + `/api/admins` routes). Admin Panel → "Manage Admins" (`/admin/admins`) lets an admin add/remove other accounts by email. AuthContext re-checks the allowlist on login/signup and on app mount, so promotions/removals take effect next time that account opens the app. The super-admin email is permanent and cannot be removed.
   - Admin Panel accessible from Profile screen when logged in as admin
   - Admin Dashboard: stats (products, orders, revenue, pending), quick actions, recent orders
   - Product Management (`/admin/products`): list all products with edit/delete, FAB to add new
