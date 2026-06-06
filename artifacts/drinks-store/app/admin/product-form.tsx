@@ -39,6 +39,67 @@ const ACCENT_OPTIONS = [
   { label: "Coral", value: "#e74c3c" },
 ];
 
+type FieldProps = {
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+  keyboardType?: any;
+  error?: string;
+  errorKey?: string;
+  colors: ReturnType<typeof useColors>;
+  setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+};
+
+// Defined at module scope (NOT inside the screen component) so its identity is
+// stable across renders. A component defined inside render is recreated on every
+// keystroke, which remounts the TextInput and dismisses the keyboard.
+const Field = React.memo(function Field({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  multiline,
+  keyboardType,
+  error,
+  errorKey,
+  colors,
+  setErrors,
+}: FieldProps) {
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
+      <TextInput
+        style={[
+          styles.input,
+          multiline && styles.multilineInput,
+          {
+            backgroundColor: colors.secondary,
+            borderColor: error ? colors.destructive : colors.border,
+            borderRadius: colors.radius,
+            color: colors.foreground,
+          },
+        ]}
+        placeholder={placeholder}
+        placeholderTextColor={colors.mutedForeground}
+        value={value}
+        onChangeText={(t) => {
+          onChangeText(t);
+          if (error && errorKey)
+            setErrors((prev) => ({ ...prev, [errorKey]: "" }));
+        }}
+        multiline={multiline}
+        keyboardType={keyboardType}
+        autoCapitalize="sentences"
+      />
+      {error ? (
+        <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>
+      ) : null}
+    </View>
+  );
+});
+
 export default function ProductFormScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -118,51 +179,6 @@ export default function ProductFormScreen() {
     router.back();
   };
 
-  const Field = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    multiline,
-    keyboardType,
-    error,
-  }: {
-    label: string;
-    value: string;
-    onChangeText: (t: string) => void;
-    placeholder?: string;
-    multiline?: boolean;
-    keyboardType?: any;
-    error?: string;
-  }) => (
-    <View style={{ gap: 6 }}>
-      <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
-      <TextInput
-        style={[
-          styles.input,
-          multiline && styles.multilineInput,
-          {
-            backgroundColor: colors.secondary,
-            borderColor: error ? colors.destructive : colors.border,
-            borderRadius: colors.radius,
-            color: colors.foreground,
-          },
-        ]}
-        placeholder={placeholder}
-        placeholderTextColor={colors.mutedForeground}
-        value={value}
-        onChangeText={(t) => {
-          onChangeText(t);
-          if (error) setErrors((prev) => ({ ...prev, [label.toLowerCase()]: "" }));
-        }}
-        multiline={multiline}
-        keyboardType={keyboardType}
-        autoCapitalize="sentences"
-      />
-      {error && <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text>}
-    </View>
-  );
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
@@ -192,13 +208,18 @@ export default function ProductFormScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="Product Name"
           value={name}
           onChangeText={setName}
           placeholder="e.g. Clase Azul Reposado Tequila"
           error={errors.name}
+          errorKey="name"
         />
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="Short Name (optional)"
           value={shortName}
           onChangeText={setShortName}
@@ -246,24 +267,32 @@ export default function ProductFormScreen() {
         </View>
 
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="Price (₦)"
           value={price}
           onChangeText={setPrice}
           placeholder="e.g. 116000"
           keyboardType="numeric"
           error={errors.price}
+          errorKey="price"
         />
 
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="Description"
           value={description}
           onChangeText={setDescription}
           placeholder="Full product description..."
           multiline
           error={errors.description}
+          errorKey="description"
         />
 
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="Short Description (optional)"
           value={shortDesc}
           onChangeText={setShortDesc}
@@ -272,6 +301,8 @@ export default function ProductFormScreen() {
         />
 
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="Image URL (optional)"
           value={imageUri}
           onChangeText={setImageUri}
@@ -310,18 +341,24 @@ export default function ProductFormScreen() {
         )}
 
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="Origin (optional)"
           value={origin}
           onChangeText={setOrigin}
           placeholder="e.g. Jalisco, Mexico"
         />
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="ABV (optional)"
           value={abv}
           onChangeText={setAbv}
           placeholder="e.g. 40%"
         />
         <Field
+          colors={colors}
+          setErrors={setErrors}
           label="Tags (comma-separated, optional)"
           value={tags}
           onChangeText={setTags}
