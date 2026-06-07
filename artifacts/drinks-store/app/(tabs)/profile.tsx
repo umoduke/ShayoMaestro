@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -10,6 +10,8 @@ import {
   View,
   Platform,
   Alert,
+  Modal,
+  Switch,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -17,6 +19,23 @@ import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useOrders } from "@/context/OrdersContext";
+import {
+  useSettings,
+  ThemeMode,
+  NotificationPrefs,
+} from "@/context/SettingsContext";
+
+const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: string; desc: string }[] = [
+  { mode: "system", label: "System", icon: "smartphone", desc: "Match your device setting" },
+  { mode: "light", label: "Light", icon: "sun", desc: "Always use the light theme" },
+  { mode: "dark", label: "Dark", icon: "moon", desc: "Always use the dark theme" },
+];
+
+const NOTIFICATION_OPTIONS: { key: keyof NotificationPrefs; label: string; desc: string }[] = [
+  { key: "orderUpdates", label: "Order updates", desc: "Status changes and delivery alerts" },
+  { key: "promotions", label: "Promotions & offers", desc: "Discounts and special deals" },
+  { key: "newArrivals", label: "New arrivals", desc: "Be first to know about new bottles" },
+];
 
 interface MenuItemProps {
   icon: string;
@@ -78,9 +97,17 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { favorites } = useFavorites();
   const { orders } = useOrders();
+  const { themeMode, setThemeMode, notifications, setNotification } = useSettings();
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+
+  const themeLabel =
+    themeMode === "system" ? "System" : themeMode === "light" ? "Light" : "Dark";
+  const activeNotifications =
+    NOTIFICATION_OPTIONS.filter((o) => notifications[o.key]).length;
 
   const handleLogout = () => {
     if (Platform.OS === "web") {
@@ -202,12 +229,14 @@ export default function ProfileScreen() {
         <MenuItem
           icon="bell"
           label="Notifications"
-          onPress={() => {}}
+          value={`${activeNotifications} on`}
+          onPress={() => setNotificationsOpen(true)}
         />
         <MenuItem
           icon="moon"
           label="Appearance"
-          onPress={() => {}}
+          value={themeLabel}
+          onPress={() => setAppearanceOpen(true)}
         />
 
         {user.isAdmin && (
@@ -233,6 +262,144 @@ export default function ProfileScreen() {
           />
         </View>
       </View>
+
+      {/* Appearance modal */}
+      <Modal
+        visible={appearanceOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAppearanceOpen(false)}
+      >
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}
+          onPress={() => setAppearanceOpen(false)}
+        >
+          <Pressable
+            style={[
+              styles.modalSheet,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                paddingBottom: bottomInset + 16,
+              },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Appearance
+            </Text>
+            <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
+              Choose how the app looks
+            </Text>
+            {THEME_OPTIONS.map((opt) => {
+              const selected = themeMode === opt.mode;
+              return (
+                <Pressable
+                  key={opt.mode}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setThemeMode(opt.mode);
+                  }}
+                  style={[
+                    styles.optionRow,
+                    {
+                      borderColor: selected ? colors.primary : colors.border,
+                      backgroundColor: selected
+                        ? colors.primary + "12"
+                        : colors.background,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.optionIcon,
+                      { backgroundColor: colors.secondary },
+                    ]}
+                  >
+                    <Feather
+                      name={opt.icon as any}
+                      size={18}
+                      color={selected ? colors.primary : colors.foreground}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.optionLabel, { color: colors.foreground }]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[styles.optionDesc, { color: colors.mutedForeground }]}>
+                      {opt.desc}
+                    </Text>
+                  </View>
+                  {selected && (
+                    <Feather name="check" size={20} color={colors.primary} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Notifications modal */}
+      <Modal
+        visible={notificationsOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNotificationsOpen(false)}
+      >
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}
+          onPress={() => setNotificationsOpen(false)}
+        >
+          <Pressable
+            style={[
+              styles.modalSheet,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                paddingBottom: bottomInset + 16,
+              },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Notifications
+            </Text>
+            <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
+              Pick what you want to hear about
+            </Text>
+            {NOTIFICATION_OPTIONS.map((opt) => (
+              <View
+                key={opt.key}
+                style={[
+                  styles.optionRow,
+                  { borderColor: colors.border, backgroundColor: colors.background },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.optionLabel, { color: colors.foreground }]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={[styles.optionDesc, { color: colors.mutedForeground }]}>
+                    {opt.desc}
+                  </Text>
+                </View>
+                <Switch
+                  value={notifications[opt.key]}
+                  onValueChange={(v) => {
+                    Haptics.selectionAsync();
+                    setNotification(opt.key, v);
+                  }}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#ffffff"
+                />
+              </View>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -354,5 +521,56 @@ const styles = StyleSheet.create({
   menuValue: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 10,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 6,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  modalSub: {
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  optionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  optionLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  optionDesc: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });

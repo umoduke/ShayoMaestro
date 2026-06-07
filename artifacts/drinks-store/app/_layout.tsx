@@ -33,6 +33,7 @@ import { FavoritesProvider } from "@/context/FavoritesContext";
 import { OffersProvider } from "@/context/OffersContext";
 import { OrdersProvider } from "@/context/OrdersContext";
 import { ProductsProvider } from "@/context/ProductsContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -135,6 +136,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <SettingsProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView>
@@ -165,6 +167,7 @@ export default function RootLayout() {
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
+      </SettingsProvider>
     </SafeAreaProvider>
   );
 }

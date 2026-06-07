@@ -1,1 +1,2 @@
 - [Admin allowlist auth pitfall](admin-allowlist-auth.md) — identity-based isAdmin check endpoint must never gate the password-protected super-admin login, or any password unlocks admin.
+- [RN keyboard-dismiss-per-keystroke](rn-input-remount.md) — input loses focus every char when its component is defined inside render; hoist it to module scope and pass props.

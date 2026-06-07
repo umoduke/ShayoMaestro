@@ -33,6 +33,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
   - User auth (sign up / login, stored locally)
   - Favorites (heart icon, persisted)
   - Order history with status tracking
+  - Profile → Preferences: working **Appearance** (theme: System/Light/Dark) and **Notifications** (per-type toggles) settings, persisted via `SettingsContext` (AsyncStorage). `useColors` and `useEffectiveScheme` resolve the active palette from the theme preference; `SettingsProvider` wraps the whole app (above `ErrorBoundary`).
 - **Product Images**: AI-generated bottle photography in `assets/images/` (casamigos-blanco.png, casamigos-reposado.png, clase-azul-anejo.png, clase-azul-reposado.png)
 - **Logo**: AI-generated ASL brand logo in `assets/images/asl-logo.png`
 - **Contexts**: CartContext, AuthContext, FavoritesContext, OrdersContext, ProductsContext
