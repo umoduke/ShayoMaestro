@@ -303,7 +303,7 @@ export default function ProductFormScreen() {
         return;
       }
       const filled = applyLookup(product);
-      const srcLabel = source === "go-upc" ? "Go-UPC" : "Open Food Facts";
+      const srcLabel = "Open Food Facts";
       Alert.alert(
         "Details found",
         filled.length > 0

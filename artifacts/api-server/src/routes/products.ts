@@ -50,13 +50,14 @@ function normalizeBody(body: any) {
 
 // --- Barcode -> manufacturer product lookup -------------------------------
 // Resolves a scanned retail barcode (EAN/UPC) to product details so the admin
-// form can be pre-filled. Primary source is Go-UPC (broad retail coverage
-// including spirits/liquor, and reachable server-side from this host); falls
-// back to the free Open Food Facts database.
+// form can be pre-filled. Uses only the free Open Food Facts database (no API
+// key, nothing to pay for). It has good coverage of mass-market drinks but
+// little for premium spirits, which the admin fills in manually.
 //
-// Note: Barcode Lookup was evaluated and rejected — its Cloudflare layer hard-
-// blocks requests from this server's data-center IP (empty 403 regardless of
-// key), so it can never resolve a code server-side from here.
+// Why not a paid provider: Barcode Lookup (broad spirits coverage) is hard-
+// blocked by Cloudflare for this server's data-center IP (empty 403 for any
+// key); Go-UPC is reachable but its API is paid. The store opted to stay on
+// the free source rather than take on a second subscription.
 
 type LookupResult = {
   name: string;
@@ -107,45 +108,12 @@ function parseAbv(...parts: (string | null | undefined)[]): string | null {
   return m ? `${m[1]}%` : null;
 }
 
-async function lookupGoUpc(barcode: string): Promise<LookupResult | null> {
-  const key = process.env.GO_UPC_API_KEY;
-  if (!key) return null;
-  const url = `https://go-upc.com/api/v1/code/${encodeURIComponent(barcode)}`;
-  const res = await fetch(url, {
-    headers: { Accept: "application/json", Authorization: `Bearer ${key}` },
-  });
-  if (!res.ok) return null;
-  const data: any = await res.json().catch(() => null);
-  const p = data?.product;
-  const name = String(p?.name ?? "").trim();
-  if (!name) return null;
-  // specs is an array of [label, value] pairs; flatten so ABV/category hints in
-  // there are visible to the regex parsers.
-  const specsText = Array.isArray(p?.specs)
-    ? p.specs
-        .map((s: unknown) => (Array.isArray(s) ? s.join(" ") : String(s)))
-        .join(" ")
-    : "";
-  const tags = [p.brand]
-    .map((x: unknown) => String(x ?? "").trim())
-    .filter(Boolean);
-  return {
-    name,
-    description: p.description ? String(p.description).trim() : null,
-    imageUri: p.imageUrl ? String(p.imageUrl) : null,
-    origin: p.region ? String(p.region).trim() || null : null,
-    abv: parseAbv(name, p.description, specsText),
-    category: guessCategory(name, p.category, p.description, specsText),
-    tags: Array.from(new Set(tags)),
-  };
-}
-
 async function lookupOpenFoodFacts(
   barcode: string,
 ): Promise<LookupResult | null> {
   const url =
     `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json` +
-    `?fields=product_name,brands,generic_name,categories,countries,image_url`;
+    `?fields=product_name,brands,generic_name,categories,countries,image_url,quantity`;
   const res = await fetch(url, {
     headers: { "User-Agent": "ASL-DrinksStore/1.0 (admin barcode lookup)" },
   });
@@ -167,15 +135,16 @@ async function lookupOpenFoodFacts(
     origin: pr.countries
       ? String(pr.countries).split(",")[0]!.trim() || null
       : null,
-    abv: null,
+    abv: parseAbv(name, pr.generic_name, pr.quantity, pr.categories),
     category: guessCategory(name, pr.categories, pr.generic_name),
     tags,
   };
 }
 
-// Lightweight in-memory rate limit. Unlike basic CRUD, this route calls a
-// paid third-party API, so it must be shielded from runaway/abusive traffic
-// (it's otherwise unauthenticated, like the rest of this MVP). Behind the
+// Lightweight in-memory rate limit. This route fans out to a third-party API
+// on every call, so it's shielded from runaway/abusive traffic (it's otherwise
+// unauthenticated, like the rest of this MVP) — both to be a polite Open Food
+// Facts client and to avoid getting this server's IP throttled. Behind the
 // shared proxy most requests share an IP, so this acts as a global cap too.
 const LOOKUP_WINDOW_MS = 60_000;
 const LOOKUP_MAX = 60;
@@ -207,22 +176,14 @@ router.get("/products/lookup/:barcode", async (req, res) => {
     return res.status(400).json({ error: "Invalid barcode" });
   }
   try {
-    let source: "go-upc" | "openfoodfacts" | null = "go-upc";
-    let result = await lookupGoUpc(barcode).catch((err) => {
-      logger.warn({ err }, "Go-UPC request failed");
+    const result = await lookupOpenFoodFacts(barcode).catch((err) => {
+      logger.warn({ err }, "Open Food Facts request failed");
       return null;
     });
     if (!result) {
-      source = "openfoodfacts";
-      result = await lookupOpenFoodFacts(barcode).catch((err) => {
-        logger.warn({ err }, "Open Food Facts request failed");
-        return null;
-      });
-    }
-    if (!result) {
       return res.json({ found: false, source: null, product: null });
     }
-    return res.json({ found: true, source, product: result });
+    return res.json({ found: true, source: "openfoodfacts", product: result });
   } catch (err) {
     logger.error({ err }, "Barcode lookup failed");
     return res.status(500).json({ error: "Lookup failed" });
