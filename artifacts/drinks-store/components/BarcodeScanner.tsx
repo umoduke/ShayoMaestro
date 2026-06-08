@@ -19,6 +19,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 
+// Kept focused on the codes actually found on bottles/cartons. Feeding the
+// decoder fewer types makes it noticeably faster and more reliable at locking
+// onto a small retail barcode (e.g. the EAN-13 on a Hennessy bottle).
 const BARCODE_TYPES = [
   "qr",
   "ean13",
@@ -26,12 +29,7 @@ const BARCODE_TYPES = [
   "upc_a",
   "upc_e",
   "code128",
-  "code39",
-  "code93",
-  "itf14",
-  "codabar",
   "datamatrix",
-  "pdf417",
 ] as const;
 
 type Props = {
@@ -45,17 +43,24 @@ export function BarcodeScanner({ visible, onClose, onScanned }: Props) {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [manual, setManual] = useState("");
+  const [torch, setTorch] = useState(false);
+  const [mountError, setMountError] = useState<string | null>(null);
   // Guard so a single physical scan fires the callback only once. Re-armed only
   // on the closed -> open transition, never during render, so a burst of camera
   // frames after the first hit cannot fire the callback again.
   const scanned = useRef(false);
 
   useEffect(() => {
-    if (visible) scanned.current = false;
+    if (visible) {
+      scanned.current = false;
+      setTorch(false);
+      setMountError(null);
+    }
   }, [visible]);
 
   const handleClose = () => {
     scanned.current = false;
+    setTorch(false);
     setManual("");
     onClose();
   };
@@ -145,18 +150,46 @@ export function BarcodeScanner({ visible, onClose, onScanned }: Props) {
       );
     }
 
+    if (mountError) {
+      return (
+        <View style={styles.centered}>
+          <Feather name="alert-triangle" size={48} color={colors.mutedForeground} />
+          <Text style={[styles.infoTitle, { color: colors.foreground }]}>
+            Camera couldn&apos;t start
+          </Text>
+          <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+            {mountError}. Close and reopen the scanner, or enter the code
+            manually below.
+          </Text>
+          <ManualEntry
+            value={manual}
+            onChange={setManual}
+            onSubmit={submitManual}
+            colors={colors}
+          />
+        </View>
+      );
+    }
+
     return (
       <View style={{ flex: 1 }}>
         <CameraView
           style={StyleSheet.absoluteFill}
           facing="back"
+          enableTorch={torch}
           barcodeScannerSettings={{ barcodeTypes: [...BARCODE_TYPES] }}
           onBarcodeScanned={handleScanned}
+          onMountError={(e) =>
+            setMountError(e?.message ?? "The camera failed to start")
+          }
         />
         <View style={styles.overlay} pointerEvents="none">
           <View style={[styles.reticle, { borderColor: colors.primary }]} />
           <Text style={styles.overlayText}>
-            Point the camera at the barcode or QR code
+            Fill the frame with the barcode or QR code
+          </Text>
+          <Text style={styles.overlayHint}>
+            Hold steady ~15cm away in good light. Tap the flash if it&apos;s dim.
           </Text>
         </View>
       </View>
@@ -181,7 +214,17 @@ export function BarcodeScanner({ visible, onClose, onScanned }: Props) {
             <Feather name="x" size={26} color="#fff" />
           </Pressable>
           <Text style={styles.headerTitle}>Scan Product</Text>
-          <View style={{ width: 26 }} />
+          {!isWeb && permission?.granted && !mountError ? (
+            <Pressable onPress={() => setTorch((t) => !t)} hitSlop={12}>
+              <Feather
+                name={torch ? "zap" : "zap-off"}
+                size={24}
+                color={torch ? colors.primary : "#fff"}
+              />
+            </Pressable>
+          ) : (
+            <View style={{ width: 26 }} />
+          )}
         </View>
         {renderBody()}
       </View>
@@ -274,6 +317,14 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 15,
     fontWeight: "600",
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowRadius: 6,
+  },
+  overlayHint: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    textAlign: "center",
+    paddingHorizontal: 32,
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowRadius: 6,
   },
