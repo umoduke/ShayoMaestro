@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,6 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DrinkCategory, CATEGORIES } from "@/data/drinks";
 import { ProductImage } from "@/components/ProductImage";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { api, type BarcodeLookupProduct } from "@/lib/api";
 
 const VALID_CATEGORIES = CATEGORIES.map((c) => c.id);
 
@@ -130,7 +132,13 @@ export default function ProductFormScreen() {
   const [accentColor, setAccentColor] = useState(existing?.accentColor ?? "#d4a843");
   const [barcode, setBarcode] = useState(existing?.barcode ?? "");
   const [scannerVisible, setScannerVisible] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Tracks whether the category was deliberately set (by the admin tapping a
+  // pill, or because we're editing a product that already has one). Category
+  // has a non-empty default, so this is how a barcode lookup decides whether
+  // it may set the category without clobbering a real choice.
+  const categoryTouched = useRef<boolean>(!!id);
 
   // Rehydrate the form when the route `id` changes. expo-router reuses this
   // screen instance for same-route param changes (e.g. the duplicate-barcode
@@ -153,6 +161,9 @@ export default function ProductFormScreen() {
     setAccentColor(e?.accentColor ?? "#d4a843");
     setBarcode(e?.barcode ?? "");
     setErrors({});
+    // An existing product already has a deliberate category; a new product's
+    // default is "up for grabs" by a barcode lookup until the admin taps a pill.
+    categoryTouched.current = !!id;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -232,8 +243,81 @@ export default function ProductFormScreen() {
           },
         ],
       );
-    } else {
-      Alert.alert("Code scanned", `Saved code: ${trimmed}`);
+      return;
+    }
+    // Only retail EAN/UPC codes can be looked up; a plain-text QR has nothing to
+    // resolve, so just keep the captured code rather than hitting the service.
+    if (!/^[0-9]{6,14}$/.test(trimmed)) {
+      Alert.alert("Code saved", `Saved code: ${trimmed}`);
+      return;
+    }
+    // Not a duplicate — try to auto-fill details from a product database.
+    void lookupAndFill(trimmed);
+  };
+
+  // Fill only the fields the admin hasn't already entered, so a scan never
+  // clobbers in-progress edits. The actual writes use functional updaters that
+  // re-check `prev` at flush time, so even a value typed while the lookup was
+  // in-flight is preserved. Returns the labels of the fields it filled.
+  const applyLookup = (p: BarcodeLookupProduct): string[] => {
+    const filled: string[] = [];
+    const fillIfEmpty = (
+      current: string,
+      value: string | null | undefined,
+      setter: React.Dispatch<React.SetStateAction<string>>,
+      label: string,
+    ) => {
+      if (!value || current.trim()) return;
+      setter((prev) => (prev.trim() ? prev : value));
+      filled.push(label);
+    };
+    fillIfEmpty(name, p.name, setName, "name");
+    fillIfEmpty(description, p.description, setDescription, "description");
+    fillIfEmpty(imageUri, p.imageUri, setImageUri, "image");
+    fillIfEmpty(origin, p.origin, setOrigin, "origin");
+    fillIfEmpty(abv, p.abv, setAbv, "ABV");
+    const cat = p.category?.toLowerCase();
+    if (cat && (VALID_CATEGORIES as string[]).includes(cat) && !categoryTouched.current) {
+      setCategory(cat as DrinkCategory);
+      filled.push("category");
+    }
+    fillIfEmpty(
+      tags,
+      p.tags.length > 0 ? p.tags.join(", ") : "",
+      setTags,
+      "tags",
+    );
+    setErrors({});
+    return filled;
+  };
+
+  const lookupAndFill = async (code: string) => {
+    setLookingUp(true);
+    try {
+      const { found, source, product } = await api.lookupBarcode(code);
+      if (!found || !product) {
+        Alert.alert(
+          "Code saved",
+          `Saved code: ${code}\n\nNo manufacturer details were found for this barcode — please fill in the product details manually.`,
+        );
+        return;
+      }
+      const filled = applyLookup(product);
+      const srcLabel =
+        source === "barcodelookup" ? "Barcode Lookup" : "Open Food Facts";
+      Alert.alert(
+        "Details found",
+        filled.length > 0
+          ? `Filled ${filled.join(", ")} from ${srcLabel}. Review the details, set the price, then tap Save.`
+          : `Found a match on ${srcLabel}, but those fields were already filled. Review and Save.`,
+      );
+    } catch {
+      Alert.alert(
+        "Code saved",
+        `Saved code: ${code}\n\nCouldn't reach the product lookup service. Please fill in the details manually.`,
+      );
+    } finally {
+      setLookingUp(false);
     }
   };
 
@@ -349,7 +433,10 @@ export default function ProductFormScreen() {
               {CATEGORIES.filter((c) => c.id !== "all").map((cat) => (
                 <Pressable
                   key={cat.id}
-                  onPress={() => setCategory(cat.id)}
+                  onPress={() => {
+                    categoryTouched.current = true;
+                    setCategory(cat.id);
+                  }}
                   style={[
                     styles.catChip,
                     {
@@ -487,6 +574,14 @@ export default function ProductFormScreen() {
           onChangeText={setBarcode}
           placeholder="Scan or enter the product code"
         />
+        {lookingUp && (
+          <View style={styles.lookupRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.lookupText, { color: colors.mutedForeground }]}>
+              Looking up product details…
+            </Text>
+          </View>
+        )}
 
         {/* Image background color */}
         <View style={{ gap: 8 }}>
@@ -562,6 +657,13 @@ const styles = StyleSheet.create({
   multilineInput: { minHeight: 90, textAlignVertical: "top" },
   error: { fontSize: 12 },
   hint: { fontSize: 12, marginTop: -10 },
+  lookupRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: -6,
+  },
+  lookupText: { fontSize: 13 },
   scanBtn: {
     flexDirection: "row",
     alignItems: "center",

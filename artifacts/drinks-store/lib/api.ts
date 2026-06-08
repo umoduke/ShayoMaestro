@@ -138,8 +138,24 @@ export type ProductInput = Omit<
   "id" | "createdAt" | "updatedAt" | "sortOrder"
 > & { sortOrder?: number };
 
+export interface BarcodeLookupProduct {
+  name: string;
+  description: string | null;
+  imageUri: string | null;
+  origin: string | null;
+  abv: string | null;
+  category: string | null;
+  tags: string[];
+}
+
 export const api = {
   listProducts: () => request<{ products: ApiProduct[] }>("/api/products"),
+  lookupBarcode: (barcode: string) =>
+    request<{
+      found: boolean;
+      source: "barcodelookup" | "openfoodfacts" | null;
+      product: BarcodeLookupProduct | null;
+    }>(`/api/products/lookup/${encodeURIComponent(barcode)}`),
   createProduct: (input: ProductInput) =>
     request<{ product: ApiProduct }>("/api/products", {
       method: "POST",

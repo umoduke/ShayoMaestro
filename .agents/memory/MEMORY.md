@@ -1,3 +1,4 @@
 - [Admin allowlist auth pitfall](admin-allowlist-auth.md) — identity-based isAdmin check endpoint must never gate the password-protected super-admin login, or any password unlocks admin.
 - [RN keyboard-dismiss-per-keystroke](rn-input-remount.md) — input loses focus every char when its component is defined inside render; hoist it to module scope and pass props.
 - [Expo Router same-route param reuse](expo-router-param-rehydrate.md) — screen isn't remounted on same-route param change; forms keyed off useState initializers keep stale values — add a param-keyed rehydrate effect.
+- [Barcode -> product lookup](barcode-lookup.md) — Barcode Lookup primary + Open Food Facts fallback; OFF lacks spirits; match category keywords on whole words (\bgin\b) not substrings; key-with-slashes => Cloudflare 301-loop.
