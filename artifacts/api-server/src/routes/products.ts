@@ -50,8 +50,13 @@ function normalizeBody(body: any) {
 
 // --- Barcode -> manufacturer product lookup -------------------------------
 // Resolves a scanned retail barcode (EAN/UPC) to product details so the admin
-// form can be pre-filled. Primary source is Barcode Lookup (broad coverage
-// including spirits/liquor); falls back to the free Open Food Facts database.
+// form can be pre-filled. Primary source is Go-UPC (broad retail coverage
+// including spirits/liquor, and reachable server-side from this host); falls
+// back to the free Open Food Facts database.
+//
+// Note: Barcode Lookup was evaluated and rejected — its Cloudflare layer hard-
+// blocks requests from this server's data-center IP (empty 403 regardless of
+// key), so it can never resolve a code server-side from here.
 
 type LookupResult = {
   name: string;
@@ -102,31 +107,35 @@ function parseAbv(...parts: (string | null | undefined)[]): string | null {
   return m ? `${m[1]}%` : null;
 }
 
-async function lookupBarcodeLookup(
-  barcode: string,
-): Promise<LookupResult | null> {
-  const key = process.env.BARCODE_LOOKUP_API_KEY;
+async function lookupGoUpc(barcode: string): Promise<LookupResult | null> {
+  const key = process.env.GO_UPC_API_KEY;
   if (!key) return null;
-  const url =
-    `https://api.barcodelookup.com/v3/products?barcode=${encodeURIComponent(barcode)}` +
-    `&formatted=y&key=${encodeURIComponent(key)}`;
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  const url = `https://go-upc.com/api/v1/code/${encodeURIComponent(barcode)}`;
+  const res = await fetch(url, {
+    headers: { Accept: "application/json", Authorization: `Bearer ${key}` },
+  });
   if (!res.ok) return null;
   const data: any = await res.json().catch(() => null);
-  const p = data?.products?.[0];
-  const name = String(p?.title ?? "").trim();
+  const p = data?.product;
+  const name = String(p?.name ?? "").trim();
   if (!name) return null;
-  const tags = [p.brand, p.manufacturer]
+  // specs is an array of [label, value] pairs; flatten so ABV/category hints in
+  // there are visible to the regex parsers.
+  const specsText = Array.isArray(p?.specs)
+    ? p.specs
+        .map((s: unknown) => (Array.isArray(s) ? s.join(" ") : String(s)))
+        .join(" ")
+    : "";
+  const tags = [p.brand]
     .map((x: unknown) => String(x ?? "").trim())
     .filter(Boolean);
   return {
     name,
     description: p.description ? String(p.description).trim() : null,
-    imageUri:
-      Array.isArray(p.images) && p.images[0] ? String(p.images[0]) : null,
-    origin: null,
-    abv: parseAbv(name, p.description),
-    category: guessCategory(name, p.category, p.description),
+    imageUri: p.imageUrl ? String(p.imageUrl) : null,
+    origin: p.region ? String(p.region).trim() || null : null,
+    abv: parseAbv(name, p.description, specsText),
+    category: guessCategory(name, p.category, p.description, specsText),
     tags: Array.from(new Set(tags)),
   };
 }
@@ -198,9 +207,9 @@ router.get("/products/lookup/:barcode", async (req, res) => {
     return res.status(400).json({ error: "Invalid barcode" });
   }
   try {
-    let source: "barcodelookup" | "openfoodfacts" | null = "barcodelookup";
-    let result = await lookupBarcodeLookup(barcode).catch((err) => {
-      logger.warn({ err }, "Barcode Lookup request failed");
+    let source: "go-upc" | "openfoodfacts" | null = "go-upc";
+    let result = await lookupGoUpc(barcode).catch((err) => {
+      logger.warn({ err }, "Go-UPC request failed");
       return null;
     });
     if (!result) {

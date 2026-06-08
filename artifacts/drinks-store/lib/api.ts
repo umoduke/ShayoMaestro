@@ -153,7 +153,7 @@ export const api = {
   lookupBarcode: (barcode: string) =>
     request<{
       found: boolean;
-      source: "barcodelookup" | "openfoodfacts" | null;
+      source: "go-upc" | "openfoodfacts" | null;
       product: BarcodeLookupProduct | null;
     }>(`/api/products/lookup/${encodeURIComponent(barcode)}`),
   createProduct: (input: ProductInput) =>
