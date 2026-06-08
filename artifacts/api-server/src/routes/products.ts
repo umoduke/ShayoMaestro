@@ -44,6 +44,7 @@ function normalizeBody(body: any) {
       : [],
     origin: body?.origin ? String(body.origin) : null,
     abv: body?.abv ? String(body.abv) : null,
+    barcode: body?.barcode ? String(body.barcode).trim() : null,
   };
 }
 

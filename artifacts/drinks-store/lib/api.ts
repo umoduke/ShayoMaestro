@@ -127,6 +127,7 @@ export interface ApiProduct {
   tags: string[];
   origin: string | null;
   abv: string | null;
+  barcode: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

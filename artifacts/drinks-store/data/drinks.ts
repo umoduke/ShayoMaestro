@@ -28,6 +28,7 @@ export interface Drink {
   tags?: string[];
   origin?: string;
   abv?: string;
+  barcode?: string;
 }
 
 export const CATEGORIES: { id: DrinkCategory; label: string; icon: string }[] = [

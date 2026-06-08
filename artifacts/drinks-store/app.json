@@ -34,7 +34,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Authentic Shayo Lockerr to use the camera to scan product barcodes and QR codes."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

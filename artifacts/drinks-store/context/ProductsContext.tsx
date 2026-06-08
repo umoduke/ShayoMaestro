@@ -45,6 +45,7 @@ function apiToDrink(p: ApiProduct): Drink {
     tags: p.tags ?? [],
     origin: p.origin ?? undefined,
     abv: p.abv ?? undefined,
+    barcode: p.barcode ?? undefined,
   };
 }
 
@@ -68,6 +69,7 @@ function drinkToInput(d: Partial<Drink> & { sizes: Drink["sizes"]; name: string 
     tags: d.tags ?? [],
     origin: d.origin ?? null,
     abv: d.abv ?? null,
+    barcode: d.barcode ?? null,
   };
 }
 

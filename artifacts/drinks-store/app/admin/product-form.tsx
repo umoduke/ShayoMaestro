@@ -20,6 +20,9 @@ import { useProducts } from "@/context/ProductsContext";
 import { useAuth } from "@/context/AuthContext";
 import { DrinkCategory, CATEGORIES } from "@/data/drinks";
 import { ProductImage } from "@/components/ProductImage";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+
+const VALID_CATEGORIES = CATEGORIES.map((c) => c.id);
 
 const COLOR_OPTIONS = [
   { label: "Dark Navy", value: "#1a3040" },
@@ -104,7 +107,7 @@ export default function ProductFormScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { addProduct, updateProduct, getProductById } = useProducts();
+  const { addProduct, updateProduct, getProductById, products } = useProducts();
   const { id } = useLocalSearchParams<{ id?: string }>();
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
@@ -125,7 +128,33 @@ export default function ProductFormScreen() {
   const [tags, setTags] = useState(existing?.tags?.join(", ") ?? "");
   const [imageColor, setImageColor] = useState(existing?.imageColor ?? "#1a3040");
   const [accentColor, setAccentColor] = useState(existing?.accentColor ?? "#d4a843");
+  const [barcode, setBarcode] = useState(existing?.barcode ?? "");
+  const [scannerVisible, setScannerVisible] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Rehydrate the form when the route `id` changes. expo-router reuses this
+  // screen instance for same-route param changes (e.g. the duplicate-barcode
+  // "Edit existing" flow), so the useState initializers above run only once.
+  // Depend on `id` only — not on getProductById/products — so a background
+  // products refresh never clobbers in-progress edits.
+  useEffect(() => {
+    const e = id ? getProductById(id) : null;
+    setName(e?.name ?? "");
+    setShortName(e?.shortName ?? "");
+    setCategory(e?.category ?? "tequila");
+    setPrice(e?.price?.toString() ?? "");
+    setDescription(e?.description ?? "");
+    setShortDesc(e?.shortDescription ?? "");
+    setImageUri(e?.imageUri ?? "");
+    setOrigin(e?.origin ?? "");
+    setAbv(e?.abv ?? "");
+    setTags(e?.tags?.join(", ") ?? "");
+    setImageColor(e?.imageColor ?? "#1a3040");
+    setAccentColor(e?.accentColor ?? "#d4a843");
+    setBarcode(e?.barcode ?? "");
+    setErrors({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (!user?.isAdmin) {
     router.replace("/(tabs)" as any);
@@ -138,6 +167,74 @@ export default function ProductFormScreen() {
     if (!price.trim() || isNaN(Number(price))) e.price = "Valid price is required";
     if (!description.trim()) e.description = "Description is required";
     return e;
+  };
+
+  const applyPayload = (payload: Record<string, unknown>) => {
+    const str = (v: unknown) => (v == null ? undefined : String(v));
+    if (str(payload.name)) setName(str(payload.name)!);
+    if (str(payload.shortName)) setShortName(str(payload.shortName)!);
+    const cat = str(payload.category)?.toLowerCase();
+    if (cat && (VALID_CATEGORIES as string[]).includes(cat)) {
+      setCategory(cat as DrinkCategory);
+    }
+    if (payload.price != null && !isNaN(Number(payload.price))) {
+      setPrice(String(payload.price));
+    }
+    if (str(payload.description)) setDescription(str(payload.description)!);
+    if (str(payload.shortDescription))
+      setShortDesc(str(payload.shortDescription)!);
+    if (str(payload.imageUri)) setImageUri(str(payload.imageUri)!);
+    if (str(payload.origin)) setOrigin(str(payload.origin)!);
+    if (str(payload.abv)) setAbv(str(payload.abv)!);
+    if (Array.isArray(payload.tags)) setTags(payload.tags.join(", "));
+    if (str(payload.barcode)) setBarcode(str(payload.barcode)!);
+    setErrors({});
+  };
+
+  const handleScanned = (data: string, type: string) => {
+    setScannerVisible(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // A QR code may carry a full product payload (JSON) so the whole form can be
+    // pre-filled — useful for store-generated restock labels.
+    const trimmed = data.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && parsed.name) {
+          applyPayload(parsed as Record<string, unknown>);
+          Alert.alert(
+            "Product details loaded",
+            "The form was filled from the QR code. Review the details and tap Save.",
+          );
+          return;
+        }
+      } catch {
+        // not JSON — fall through and treat as a plain code
+      }
+    }
+
+    // Plain barcode/QR: store the code and warn on duplicates.
+    const dup = products.find(
+      (p) => p.barcode && p.barcode === trimmed && p.id !== id,
+    );
+    setBarcode(trimmed);
+    if (dup) {
+      Alert.alert(
+        "Product already exists",
+        `"${dup.name}" already uses this code. Edit that product instead?`,
+        [
+          { text: "Keep adding", style: "cancel" },
+          {
+            text: "Edit existing",
+            onPress: () =>
+              router.replace(`/admin/product-form?id=${dup.id}` as any),
+          },
+        ],
+      );
+    } else {
+      Alert.alert("Code scanned", `Saved code: ${trimmed}`);
+    }
   };
 
   const handleSave = async () => {
@@ -166,6 +263,7 @@ export default function ProductFormScreen() {
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
       origin: origin.trim() || undefined,
       abv: abv.trim() || undefined,
+      barcode: barcode.trim() || undefined,
       featured: existing?.featured ?? false,
     };
 
@@ -207,6 +305,23 @@ export default function ProductFormScreen() {
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
       >
+        <Pressable
+          onPress={() => setScannerVisible(true)}
+          style={[
+            styles.scanBtn,
+            { borderColor: colors.primary, borderRadius: colors.radius },
+          ]}
+        >
+          <Feather name="maximize" size={20} color={colors.primary} />
+          <Text style={[styles.scanBtnText, { color: colors.primary }]}>
+            Scan Barcode / QR Code
+          </Text>
+        </Pressable>
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          Scan a bottle or carton to capture its code, or a QR label to auto-fill
+          the product details.
+        </Text>
+
         <Field
           colors={colors}
           setErrors={setErrors}
@@ -364,6 +479,14 @@ export default function ProductFormScreen() {
           onChangeText={setTags}
           placeholder="e.g. premium, bestseller, luxury"
         />
+        <Field
+          colors={colors}
+          setErrors={setErrors}
+          label="Barcode / QR Code (optional)"
+          value={barcode}
+          onChangeText={setBarcode}
+          placeholder="Scan or enter the product code"
+        />
 
         {/* Image background color */}
         <View style={{ gap: 8 }}>
@@ -409,6 +532,12 @@ export default function ProductFormScreen() {
           </View>
         </View>
       </KeyboardAwareScrollView>
+
+      <BarcodeScanner
+        visible={scannerVisible}
+        onClose={() => setScannerVisible(false)}
+        onScanned={handleScanned}
+      />
     </View>
   );
 }
@@ -433,6 +562,16 @@ const styles = StyleSheet.create({
   multilineInput: { minHeight: 90, textAlignVertical: "top" },
   error: { fontSize: 12 },
   hint: { fontSize: 12, marginTop: -10 },
+  scanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+  },
+  scanBtnText: { fontSize: 15, fontWeight: "700" },
   catChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,

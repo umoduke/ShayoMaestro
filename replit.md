@@ -46,7 +46,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
   - Admin Panel accessible from Profile screen when logged in as admin
   - Admin Dashboard: stats (products, orders, revenue, pending), quick actions, recent orders
   - Product Management (`/admin/products`): list all products with edit/delete, FAB to add new
-  - Product Form (`/admin/product-form`): add or edit product — name, category, price, description, image URL, origin, ABV, tags, colors
+  - Product Form (`/admin/product-form`): add or edit product — name, category, price, description, image URL, origin, ABV, tags, colors, **barcode/QR**
+  - **Barcode / QR scanning** (`components/BarcodeScanner.tsx`, `expo-camera`): "Scan Barcode / QR Code" button on the product form opens a full-screen camera. Scanning a plain barcode/QR captures the code into the `barcode` field and warns on duplicates (offers to edit the existing product). Scanning a QR that contains a JSON product payload (`{name, category, price, description, ...}`) auto-fills the whole form — for store-generated restock labels. Camera permission requested on demand; web shows a manual-entry fallback. Products carry a nullable `barcode` field end-to-end (DB → API → mobile).
   - Order Management (`/admin/orders`): filter by status, expand order to see items/address/payment, update status (processing/confirmed/shipped/delivered/cancelled), remove order
   - ProductsContext: now backed by the API (`/api/products`) — admin add/edit/delete persists to PostgreSQL and is shared across all clients. Falls back to bundled `DRINKS` defaults only if the API is unreachable.
   - `getProductImage(id, imageUri)` helper supports both local bundled images and remote URLs for admin-added products
@@ -55,7 +56,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Express 5 + TypeScript backend, port 8080
 - Routes:
   - `GET /api/healthz`
-  - `GET/POST/PATCH/DELETE /api/products` — single source of truth for catalog (DB-backed). Auto-seeded with the 4 default drinks on first server boot if `products` table is empty.
+  - `GET/POST/PATCH/DELETE /api/products` — single source of truth for catalog (DB-backed). Auto-seeded with the 4 default drinks on first server boot if `products` table is empty. Products include a nullable `barcode` column (captured via in-app camera scanning).
   - `POST/GET/PATCH /api/orders` — server is **authoritative for pricing**: it ignores client subtotal and recomputes from the `products` table (any unknown drinkId/sizeLabel is rejected)
   - `GET /api/orders/:id`, `GET /api/transactions`
   - `POST /api/payments/initialize` — creates a Paystack transaction tied to an order and returns checkout URL
