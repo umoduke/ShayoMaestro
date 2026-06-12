@@ -60,13 +60,18 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
   - `GET/POST/PATCH/DELETE /api/products` — single source of truth for catalog (DB-backed). Auto-seeded with the 4 default drinks on first server boot if `products` table is empty. Products include a nullable `barcode` column (captured via in-app camera scanning).
   - `GET /api/products/lookup/:barcode` — resolves a scanned EAN/UPC to product details for admin form prefill using the **free Open Food Facts** database (no API key). Returns `{found, source, product}` (partial: name/description/imageUri/origin/abv/category/tags). Category is keyword-guessed (whole-word match) into the app's `DrinkCategory`; ABV is regex-parsed from title/description. Returns `{found:false}` when the code isn't in the database. Rate-limited (60/min) to stay a polite OFF client (it's otherwise unauthenticated — MVP). **Provider history:** Open Food Facts covers mass-market drinks but few premium spirits (admin fills those manually). Paid providers were evaluated and declined: Barcode Lookup has broad spirits coverage but its Cloudflare layer hard-blocks this server's data-center IP (empty 403 for any key); Go-UPC is reachable server-side but its API is paid. `BARCODE_LOOKUP_API_KEY` is now unused.
   - `POST/GET/PATCH /api/orders` — server is **authoritative for pricing**: it ignores client subtotal and recomputes from the `products` table (any unknown drinkId/sizeLabel is rejected)
-  - `GET /api/orders/:id`, `GET /api/transactions`
+  - `GET /api/orders/:id`, `GET /api/transactions` (admin-token protected — they return customer PII)
+  - `POST /api/auth/admin-login` — super-admin login, returns an HMAC bearer token
   - `POST /api/payments/initialize` — creates a Paystack transaction tied to an order and returns checkout URL
   - `GET /api/payments/verify/:reference` — verifies with Paystack, validates returned amount/currency/reference match stored transaction before marking order paid
   - `GET /api/payments/public-key`
 - Postgres via Drizzle (`@workspace/db`): `orders` + `transactions` tables, kobo (NGN×100) integer amounts, GIG-ready customer/delivery fields
 - Paystack TEST keys via `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY`
-- ⚠️ Admin/order/transaction endpoints are **not auth-protected** — MVP only
+- **Auth (added for launch)**: dependency-free HMAC bearer tokens (Node `crypto`, signed with `SESSION_SECRET`, 7-day expiry, constant-time compare). `lib/auth.ts` mints/verifies tokens; `middlewares/requireAdmin.ts` guards routes and re-checks admin membership on every request (so removed admins lose access before token expiry). `POST /api/auth/admin-login` issues a token to the **super-admin only** (verifies `email === admin@asl.com` against `ADMIN_PASSWORD` env var — no longer hardcoded in the app).
+  - **Protected (require admin token):** products POST/PATCH/DELETE; orders GET `/orders`, GET `/orders/:id`, PATCH `/orders/:id`; GET `/transactions`; admins GET/POST/DELETE.
+  - **Public (customer flow):** GET `/products`, `/products/lookup/:barcode`, POST `/orders`, payments/*, GET `/admins/check/:email`, `/healthz`.
+  - **Known limitation:** only the super-admin obtains a server token; allowlisted admins (`admin_emails`) can authenticate in-app but have no server password, so they cannot get a backend token. Acceptable for a single-owner store with an empty allowlist. Future: add `SESSION_SECRET_PREVIOUS` for zero-downtime secret rotation.
+- Paystack is on **TEST** keys — switch `PAYSTACK_SECRET_KEY`/`PAYSTACK_PUBLIC_KEY` to LIVE before real sales (user action).
 
 ### Mobile checkout flow
 - Collects email, calls `POST /orders` (server prices the cart), then `POST /payments/initialize`, opens Paystack URL via `expo-web-browser`, calls `GET /payments/verify/:ref` on return, navigates to `/order/[id]`

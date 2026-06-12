@@ -111,7 +111,7 @@ router.get("/orders", requireAdmin, async (_req, res) => {
   }
 });
 
-router.get("/orders/:id", async (req, res) => {
+router.get("/orders/:id", requireAdmin, async (req, res) => {
   try {
     const [order] = await db
       .select()
