@@ -335,6 +335,7 @@ export default function ProductFormScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
+        aspect: [4, 5],
         quality: 0.8,
       });
       if (result.canceled || !result.assets?.[0]) return;
