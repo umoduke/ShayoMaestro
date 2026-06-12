@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -22,7 +23,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DrinkCategory, CATEGORIES } from "@/data/drinks";
 import { ProductImage } from "@/components/ProductImage";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
-import { api, type BarcodeLookupProduct } from "@/lib/api";
+import { api, uploadProductImage, type BarcodeLookupProduct } from "@/lib/api";
 
 const VALID_CATEGORIES = CATEGORIES.map((c) => c.id);
 
@@ -133,6 +134,7 @@ export default function ProductFormScreen() {
   const [barcode, setBarcode] = useState(existing?.barcode ?? "");
   const [scannerVisible, setScannerVisible] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Tracks whether the category was deliberately set (by the admin tapping a
   // pill, or because we're editing a product that already has one). Category
@@ -320,6 +322,46 @@ export default function ProductFormScreen() {
     }
   };
 
+  const handlePickImage = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Permission needed",
+          "Please allow photo library access to upload a product image.",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      setUploading(true);
+      try {
+        const servingPath = await uploadProductImage(asset.uri, asset.mimeType);
+        setImageUri(servingPath);
+        setErrors((prev) => ({ ...prev, imageUri: "" }));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (err) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(
+          "Upload failed",
+          err instanceof Error
+            ? err.message
+            : "Could not upload the photo. Please try again.",
+        );
+      } finally {
+        setUploading(false);
+      }
+    } catch {
+      Alert.alert("Unavailable", "Photo upload isn't available right now.");
+    }
+  };
+
   const handleSave = async () => {
     const e = validate();
     if (Object.keys(e).length > 0) {
@@ -500,6 +542,41 @@ export default function ProductFormScreen() {
           placeholder="Brief one-line description..."
           multiline
         />
+
+        {/* Product photo */}
+        <View style={{ gap: 8 }}>
+          <Text style={[styles.label, { color: colors.foreground }]}>
+            Product Photo
+          </Text>
+          <Pressable
+            onPress={handlePickImage}
+            disabled={uploading}
+            style={[
+              styles.scanBtn,
+              {
+                borderColor: colors.primary,
+                borderRadius: colors.radius,
+                opacity: uploading ? 0.6 : 1,
+              },
+            ]}
+          >
+            {uploading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather name="upload" size={20} color={colors.primary} />
+            )}
+            <Text style={[styles.scanBtnText, { color: colors.primary }]}>
+              {uploading
+                ? "Uploading…"
+                : imageUri
+                  ? "Replace Photo"
+                  : "Upload Photo"}
+            </Text>
+          </Pressable>
+          <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+            Take or choose a photo from your device, or paste an image URL below.
+          </Text>
+        </View>
 
         <Field
           colors={colors}

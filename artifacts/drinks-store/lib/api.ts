@@ -26,6 +26,55 @@ export function setAuthToken(token: string | null): void {
   authToken = token;
 }
 
+export function getAuthToken(): string | null {
+  return authToken;
+}
+
+/**
+ * Upload a product photo from the device to object storage and return the
+ * portable serving path (e.g. "/api/storage/objects/<id>") to persist as the
+ * product's imageUri. Stored as a relative path so it resolves correctly in
+ * both dev and production via apiUrl().
+ *
+ * Two steps: (1) ask the admin-only server endpoint for a presigned upload URL,
+ * (2) PUT the file bytes directly to storage. Native uses expo-file-system's
+ * File + expo/fetch (proper file streaming); web uses a Blob.
+ */
+export async function uploadProductImage(
+  localUri: string,
+  contentType?: string,
+): Promise<string> {
+  const { uploadURL, servingPath } = await request<{
+    uploadURL: string;
+    objectPath: string;
+    servingPath: string;
+  }>("/api/storage/upload", { method: "POST" });
+
+  const type = contentType || "image/jpeg";
+
+  if (Platform.OS === "web") {
+    const blob = await (await fetch(localUri)).blob();
+    const put = await fetch(uploadURL, {
+      method: "PUT",
+      body: blob,
+      headers: { "Content-Type": blob.type || type },
+    });
+    if (!put.ok) throw new Error(`Upload failed (${put.status})`);
+  } else {
+    const { File } = await import("expo-file-system");
+    const { fetch: expoFetch } = await import("expo/fetch");
+    const file = new File(localUri);
+    const put = await expoFetch(uploadURL, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": type },
+    });
+    if (!put.ok) throw new Error(`Upload failed (${put.status})`);
+  }
+
+  return servingPath;
+}
+
 export interface ApiOrderItem {
   drinkId: string;
   drinkName: string;
