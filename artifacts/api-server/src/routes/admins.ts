@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, adminEmailsTable } from "@workspace/db";
 import { asc, eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
 
@@ -11,7 +12,7 @@ function normalizeEmail(input: unknown): string {
   return String(input ?? "").toLowerCase().trim();
 }
 
-router.get("/admins", async (_req, res) => {
+router.get("/admins", requireAdmin, async (_req, res) => {
   try {
     const rows = await db
       .select()
@@ -42,7 +43,7 @@ router.get("/admins/check/:email", async (req, res) => {
   }
 });
 
-router.post("/admins", async (req, res) => {
+router.post("/admins", requireAdmin, async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
     const addedBy = req.body?.addedBy ? String(req.body.addedBy) : null;
@@ -74,7 +75,7 @@ router.post("/admins", async (req, res) => {
   }
 });
 
-router.delete("/admins/:email", async (req, res) => {
+router.delete("/admins/:email", requireAdmin, async (req, res) => {
   try {
     const email = normalizeEmail(req.params.email);
     if (email === SUPER_ADMIN_EMAIL) {

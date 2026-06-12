@@ -33,7 +33,7 @@ export const productsTable = pgTable("products", {
   tags: jsonb("tags").notNull().$type<string[]>().default([]),
   origin: text("origin"),
   abv: text("abv"),
-  barcode: text("barcode"),
+  barcode: text("barcode").unique(),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

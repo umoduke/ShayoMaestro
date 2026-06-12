@@ -17,6 +17,15 @@ function getBaseUrl(): string {
 export const apiUrl = (path: string) =>
   `${getBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
 
+// Admin session token (set after admin login). Attached as a Bearer header so
+// the server can authorize admin-only endpoints. Held in memory; AuthContext
+// hydrates it from AsyncStorage on app start and clears it on logout.
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null): void {
+  authToken = token;
+}
+
 export interface ApiOrderItem {
   drinkId: string;
   drinkName: string;
@@ -62,14 +71,30 @@ export interface ApiTransaction {
   createdAt: string;
 }
 
+// Thrown when the network request itself fails (device offline, server
+// unreachable) — distinct from a server error response so the UI can show an
+// appropriate "you're offline" message.
+export class NetworkError extends Error {
+  constructor(message = "No internet connection. Please check your network and try again.") {
+    super(message);
+    this.name = "NetworkError";
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(apiUrl(path), {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(apiUrl(path), {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch {
+    throw new NetworkError();
+  }
   const text = await res.text();
   let body: unknown = null;
   try {
@@ -149,6 +174,14 @@ export interface BarcodeLookupProduct {
 }
 
 export const api = {
+  adminLogin: (email: string, password: string) =>
+    request<{ token: string; email: string; isAdmin: boolean }>(
+      "/api/auth/admin-login",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      },
+    ),
   listProducts: () => request<{ products: ApiProduct[] }>("/api/products"),
   lookupBarcode: (barcode: string) =>
     request<{

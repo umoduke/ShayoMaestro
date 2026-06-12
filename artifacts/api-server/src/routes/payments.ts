@@ -49,14 +49,14 @@ router.post("/payments/initialize", async (req, res) => {
       status: "pending",
     });
 
-    res.json({
+    return res.json({
       authorizationUrl: data.authorization_url,
       reference: data.reference,
       orderId: order.id,
     });
   } catch (err) {
     logger.error({ err }, "Initialize payment failed");
-    res
+    return res
       .status(500)
       .json({ error: err instanceof Error ? err.message : "Server error" });
   }
@@ -138,7 +138,7 @@ router.get("/payments/verify/:reference", async (req, res) => {
       .where(eq(ordersTable.id, tx.orderId))
       .limit(1);
 
-    res.json({
+    return res.json({
       status: newStatus,
       order,
       paystack: {
@@ -151,7 +151,7 @@ router.get("/payments/verify/:reference", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Verify payment failed");
-    res
+    return res
       .status(500)
       .json({ error: err instanceof Error ? err.message : "Server error" });
   }
@@ -160,7 +160,7 @@ router.get("/payments/verify/:reference", async (req, res) => {
 router.get("/payments/public-key", (_req, res) => {
   const key = process.env["PAYSTACK_PUBLIC_KEY"];
   if (!key) return res.status(500).json({ error: "Public key not configured" });
-  res.json({ publicKey: key });
+  return res.json({ publicKey: key });
 });
 
 export default router;

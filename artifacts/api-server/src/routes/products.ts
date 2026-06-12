@@ -2,8 +2,19 @@ import { Router, type IRouter } from "express";
 import { db, productsTable, type ProductSize } from "@workspace/db";
 import { asc, eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
+
+// Postgres unique-violation error code, raised when two products share a barcode.
+function isDuplicateBarcodeError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: string }).code === "23505"
+  );
+}
 
 function sanitizeSizes(input: unknown): ProductSize[] {
   if (!Array.isArray(input)) return [];
@@ -196,10 +207,10 @@ router.get("/products", async (_req, res) => {
       .select()
       .from(productsTable)
       .orderBy(asc(productsTable.sortOrder), asc(productsTable.createdAt));
-    res.json({ products });
+    return res.json({ products });
   } catch (err) {
     logger.error({ err }, "Failed to list products");
-    res.status(500).json({ error: "Failed to list products" });
+    return res.status(500).json({ error: "Failed to list products" });
   }
 });
 
@@ -208,17 +219,17 @@ router.get("/products/:id", async (req, res) => {
     const [product] = await db
       .select()
       .from(productsTable)
-      .where(eq(productsTable.id, req.params.id))
+      .where(eq(productsTable.id, String(req.params.id)))
       .limit(1);
     if (!product) return res.status(404).json({ error: "Not found" });
-    res.json({ product });
+    return res.json({ product });
   } catch (err) {
     logger.error({ err }, "Failed to fetch product");
-    res.status(500).json({ error: "Failed to fetch product" });
+    return res.status(500).json({ error: "Failed to fetch product" });
   }
 });
 
-router.post("/products", async (req, res) => {
+router.post("/products", requireAdmin, async (req, res) => {
   try {
     const data = normalizeBody(req.body);
     if (!data.name || data.sizes.length === 0) {
@@ -230,14 +241,19 @@ router.post("/products", async (req, res) => {
       .insert(productsTable)
       .values({ id, ...data })
       .returning();
-    res.json({ product });
+    return res.json({ product });
   } catch (err) {
+    if (isDuplicateBarcodeError(err)) {
+      return res.status(409).json({
+        error: "Another product already uses this barcode",
+      });
+    }
     logger.error({ err }, "Failed to create product");
-    res.status(500).json({ error: "Failed to create product" });
+    return res.status(500).json({ error: "Failed to create product" });
   }
 });
 
-router.patch("/products/:id", async (req, res) => {
+router.patch("/products/:id", requireAdmin, async (req, res) => {
   try {
     const data = normalizeBody(req.body);
     if (!data.name || data.sizes.length === 0) {
@@ -246,27 +262,32 @@ router.patch("/products/:id", async (req, res) => {
     const [product] = await db
       .update(productsTable)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(productsTable.id, req.params.id))
+      .where(eq(productsTable.id, String(req.params.id)))
       .returning();
     if (!product) return res.status(404).json({ error: "Not found" });
-    res.json({ product });
+    return res.json({ product });
   } catch (err) {
+    if (isDuplicateBarcodeError(err)) {
+      return res.status(409).json({
+        error: "Another product already uses this barcode",
+      });
+    }
     logger.error({ err }, "Failed to update product");
-    res.status(500).json({ error: "Failed to update product" });
+    return res.status(500).json({ error: "Failed to update product" });
   }
 });
 
-router.delete("/products/:id", async (req, res) => {
+router.delete("/products/:id", requireAdmin, async (req, res) => {
   try {
     const [deleted] = await db
       .delete(productsTable)
-      .where(eq(productsTable.id, req.params.id))
+      .where(eq(productsTable.id, String(req.params.id)))
       .returning();
     if (!deleted) return res.status(404).json({ error: "Not found" });
-    res.json({ ok: true });
+    return res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Failed to delete product");
-    res.status(500).json({ error: "Failed to delete product" });
+    return res.status(500).json({ error: "Failed to delete product" });
   }
 });
 

@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { desc, eq, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
 
@@ -90,23 +91,23 @@ router.post("/orders", async (req, res) => {
       })
       .returning();
 
-    res.json({ order });
+    return res.json({ order });
   } catch (err) {
     logger.error({ err }, "Failed to create order");
-    res.status(500).json({ error: "Failed to create order" });
+    return res.status(500).json({ error: "Failed to create order" });
   }
 });
 
-router.get("/orders", async (_req, res) => {
+router.get("/orders", requireAdmin, async (_req, res) => {
   try {
     const orders = await db
       .select()
       .from(ordersTable)
       .orderBy(desc(ordersTable.createdAt));
-    res.json({ orders });
+    return res.json({ orders });
   } catch (err) {
     logger.error({ err }, "Failed to list orders");
-    res.status(500).json({ error: "Failed to list orders" });
+    return res.status(500).json({ error: "Failed to list orders" });
   }
 });
 
@@ -115,7 +116,7 @@ router.get("/orders/:id", async (req, res) => {
     const [order] = await db
       .select()
       .from(ordersTable)
-      .where(eq(ordersTable.id, req.params.id))
+      .where(eq(ordersTable.id, String(req.params.id)))
       .limit(1);
     if (!order) return res.status(404).json({ error: "Not found" });
     const transactions = await db
@@ -123,14 +124,14 @@ router.get("/orders/:id", async (req, res) => {
       .from(transactionsTable)
       .where(eq(transactionsTable.orderId, order.id))
       .orderBy(desc(transactionsTable.createdAt));
-    res.json({ order, transactions });
+    return res.json({ order, transactions });
   } catch (err) {
     logger.error({ err }, "Failed to fetch order");
-    res.status(500).json({ error: "Failed to fetch order" });
+    return res.status(500).json({ error: "Failed to fetch order" });
   }
 });
 
-router.patch("/orders/:id", async (req, res) => {
+router.patch("/orders/:id", requireAdmin, async (req, res) => {
   try {
     const updates: Partial<typeof ordersTable.$inferInsert> = {
       updatedAt: new Date(),
@@ -142,17 +143,17 @@ router.patch("/orders/:id", async (req, res) => {
     const [order] = await db
       .update(ordersTable)
       .set(updates)
-      .where(eq(ordersTable.id, req.params.id))
+      .where(eq(ordersTable.id, String(req.params.id)))
       .returning();
     if (!order) return res.status(404).json({ error: "Not found" });
-    res.json({ order });
+    return res.json({ order });
   } catch (err) {
     logger.error({ err }, "Failed to update order");
-    res.status(500).json({ error: "Failed to update order" });
+    return res.status(500).json({ error: "Failed to update order" });
   }
 });
 
-router.get("/transactions", async (_req, res) => {
+router.get("/transactions", requireAdmin, async (_req, res) => {
   try {
     const rows = await db
       .select({
@@ -162,10 +163,10 @@ router.get("/transactions", async (_req, res) => {
       .from(transactionsTable)
       .leftJoin(ordersTable, eq(transactionsTable.orderId, ordersTable.id))
       .orderBy(desc(transactionsTable.createdAt));
-    res.json({ transactions: rows });
+    return res.json({ transactions: rows });
   } catch (err) {
     logger.error({ err }, "Failed to list transactions");
-    res.status(500).json({ error: "Failed to list transactions" });
+    return res.status(500).json({ error: "Failed to list transactions" });
   }
 });
 

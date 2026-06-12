@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api } from "@/lib/api";
+import { api, setAuthToken } from "@/lib/api";
 
 export interface User {
   id: string;
@@ -19,9 +19,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 const USER_KEY = "drinks_store_user";
+const TOKEN_KEY = "drinks_store_admin_token";
 
 const ADMIN_EMAIL = "admin@asl.com";
-const ADMIN_PASSWORD = "ASLadmin2026";
 
 // Checks the server-side admin allowlist. Returns false on any network error
 // so a backend hiccup never blocks a normal user from logging in.
@@ -39,6 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Hydrate the admin session token first so authed requests work on launch.
+    AsyncStorage.getItem(TOKEN_KEY).then((token) => {
+      if (token) setAuthToken(token);
+    });
     AsyncStorage.getItem(USER_KEY).then(async (data) => {
       if (data) {
         try {
@@ -69,19 +73,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (password.length < 6) return { success: false, error: "Password must be at least 6 characters" };
 
       const normalizedEmail = email.toLowerCase().trim();
-      const isSuperAdmin =
-        normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD;
-      // The super-admin email is ONLY granted admin via its password. Never let
-      // the allowlist check elevate it (the server reports it as admin by
-      // identity), otherwise any password would unlock admin access.
-      const isAdmin =
-        isSuperAdmin ||
-        (normalizedEmail !== ADMIN_EMAIL &&
-          (await isAllowlistedAdmin(normalizedEmail)));
 
+      // The super-admin (store owner) authenticates against the server, which
+      // verifies the password and returns a session token. The password is no
+      // longer stored in the app — the server is the single source of truth.
+      if (normalizedEmail === ADMIN_EMAIL) {
+        try {
+          const { token } = await api.adminLogin(normalizedEmail, password);
+          setAuthToken(token);
+          await AsyncStorage.setItem(TOKEN_KEY, token);
+          const adminUser: User = {
+            id: "admin",
+            name: "Admin",
+            email: normalizedEmail,
+            isAdmin: true,
+          };
+          setUser(adminUser);
+          await AsyncStorage.setItem(USER_KEY, JSON.stringify(adminUser));
+          return { success: true };
+        } catch (err) {
+          return {
+            success: false,
+            error:
+              err instanceof Error && err.message
+                ? err.message
+                : "Invalid admin credentials",
+          };
+        }
+      }
+
+      const isAdmin = await isAllowlistedAdmin(normalizedEmail);
       const newUser: User = {
-        id: isSuperAdmin ? "admin" : Date.now().toString(),
-        name: isSuperAdmin ? "Admin" : normalizedEmail.split("@")[0],
+        id: Date.now().toString(),
+        name: normalizedEmail.split("@")[0],
         email: normalizedEmail,
         isAdmin,
       };
@@ -121,7 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null);
-    AsyncStorage.removeItem(USER_KEY);
+    setAuthToken(null);
+    AsyncStorage.multiRemove([USER_KEY, TOKEN_KEY]);
   }, []);
 
   return (
