@@ -23,6 +23,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DrinkCategory, CATEGORIES } from "@/data/drinks";
 import { ProductImage } from "@/components/ProductImage";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { ImageAdjustModal } from "@/components/ImageAdjustModal";
 import { api, uploadProductImage, type BarcodeLookupProduct } from "@/lib/api";
 
 const VALID_CATEGORIES = CATEGORIES.map((c) => c.id);
@@ -135,6 +136,7 @@ export default function ProductFormScreen() {
   const [scannerVisible, setScannerVisible] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [adjustUri, setAdjustUri] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Tracks whether the category was deliberately set (by the admin tapping a
   // pill, or because we're editing a product that already has one). Category
@@ -334,33 +336,48 @@ export default function ProductFormScreen() {
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [4, 5],
-        quality: 0.8,
+        // Native: skip the OS crop and use our own pinch/zoom adjuster so the
+        // admin can zoom in OR out to frame the photo. Web has no gesture
+        // adjuster, so let the browser-less picker return the raw image.
+        allowsEditing: Platform.OS === "web",
+        quality: 0.9,
       });
       if (result.canceled || !result.assets?.[0]) return;
 
       const asset = result.assets[0];
-      setUploading(true);
-      try {
-        const servingPath = await uploadProductImage(asset.uri, asset.mimeType);
-        setImageUri(servingPath);
-        setErrors((prev) => ({ ...prev, imageUri: "" }));
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (err) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert(
-          "Upload failed",
-          err instanceof Error
-            ? err.message
-            : "Could not upload the photo. Please try again.",
-        );
-      } finally {
-        setUploading(false);
+      if (Platform.OS === "web") {
+        await uploadAndSetImage(asset.uri, asset.mimeType);
+      } else {
+        setAdjustUri(asset.uri);
       }
     } catch {
       Alert.alert("Unavailable", "Photo upload isn't available right now.");
     }
+  };
+
+  const uploadAndSetImage = async (uri: string, mimeType?: string) => {
+    setUploading(true);
+    try {
+      const servingPath = await uploadProductImage(uri, mimeType);
+      setImageUri(servingPath);
+      setErrors((prev) => ({ ...prev, imageUri: "" }));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Upload failed",
+        err instanceof Error
+          ? err.message
+          : "Could not upload the photo. Please try again.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleAdjustConfirm = async (croppedUri: string) => {
+    setAdjustUri(null);
+    await uploadAndSetImage(croppedUri, "image/jpeg");
   };
 
   const handleSave = async () => {
@@ -709,6 +726,14 @@ export default function ProductFormScreen() {
         visible={scannerVisible}
         onClose={() => setScannerVisible(false)}
         onScanned={handleScanned}
+      />
+
+      <ImageAdjustModal
+        visible={adjustUri !== null}
+        uri={adjustUri}
+        aspectRatio={4 / 5}
+        onCancel={() => setAdjustUri(null)}
+        onConfirm={handleAdjustConfirm}
       />
     </View>
   );

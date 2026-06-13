@@ -1,1 +1,2 @@
 - [Expo object storage](expo-object-storage.md) — admin photo upload wired by hand (separate api-server+Expo); relative servingPath imageUri, public route scoped to uploads/ + image/* only.
+- [In-app image cropper (Expo Go)](expo-in-app-image-crop.md) — custom pinch/zoom+view-shot capture cropper; OS crop can't zoom out; GestureDetector needs own GestureHandlerRootView inside Modal.

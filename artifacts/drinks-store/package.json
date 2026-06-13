@@ -58,6 +58,7 @@
   "dependencies": {
     "expo-camera": "~17.0.10",
     "expo-clipboard": "^8.0.8",
-    "expo-file-system": "~19.0.23"
+    "expo-file-system": "~19.0.23",
+    "react-native-view-shot": "4.0.3"
   }
 }
