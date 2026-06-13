@@ -25,8 +25,13 @@ export function ProductImage({
   const [errored, setErrored] = useState(false);
 
   const useLocal = hasLocalImage(id);
-  const showFallback =
-    !useLocal && (errored || !imageUri || imageUri.trim().length === 0);
+  const hasPhoto = !!imageUri && imageUri.trim().length > 0;
+  const showFallback = !useLocal && (errored || !hasPhoto);
+
+  // Bundled bottle art is a transparent PNG meant to sit inside the box
+  // (contain). A user-uploaded/remote photo should fill the box edge-to-edge
+  // (cover) so it doesn't float with empty space around it.
+  const effectiveResizeMode = !useLocal && hasPhoto ? "cover" : resizeMode;
 
   if (showFallback) {
     const initial = (name ?? id).trim().charAt(0).toUpperCase() || "?";
@@ -61,7 +66,7 @@ export function ProductImage({
     <Image
       source={getProductImage(id, imageUri)}
       style={style}
-      resizeMode={resizeMode}
+      resizeMode={effectiveResizeMode}
       onError={() => setErrored(true)}
     />
   );
