@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { desc, eq, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { notifyOrderStatus } from "../lib/notify";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
@@ -133,11 +134,20 @@ router.get("/orders/:id", requireAdmin, async (req, res) => {
 
 router.patch("/orders/:id", requireAdmin, async (req, res) => {
   try {
+    // Read the current status first so we only notify on an actual change.
+    const [current] = await db
+      .select({ fulfillmentStatus: ordersTable.fulfillmentStatus })
+      .from(ordersTable)
+      .where(eq(ordersTable.id, String(req.params.id)))
+      .limit(1);
+
     const updates: Partial<typeof ordersTable.$inferInsert> = {
       updatedAt: new Date(),
     };
-    if (req.body?.fulfillmentStatus)
-      updates.fulfillmentStatus = String(req.body.fulfillmentStatus);
+    const nextStatus = req.body?.fulfillmentStatus
+      ? String(req.body.fulfillmentStatus)
+      : undefined;
+    if (nextStatus) updates.fulfillmentStatus = nextStatus;
     if (req.body?.notes !== undefined) updates.notes = req.body.notes;
 
     const [order] = await db
@@ -146,6 +156,10 @@ router.patch("/orders/:id", requireAdmin, async (req, res) => {
       .where(eq(ordersTable.id, String(req.params.id)))
       .returning();
     if (!order) return res.status(404).json({ error: "Not found" });
+
+    if (nextStatus && current && nextStatus !== current.fulfillmentStatus) {
+      notifyOrderStatus(order, nextStatus);
+    }
     return res.json({ order });
   } catch (err) {
     logger.error({ err }, "Failed to update order");

@@ -3,6 +3,7 @@ import { db, ordersTable, transactionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { paystackInitialize, paystackVerify } from "../lib/paystack";
 import { logger } from "../lib/logger";
+import { notifyOrderStatus } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -137,6 +138,12 @@ router.get("/payments/verify/:reference", async (req, res) => {
       .from(ordersTable)
       .where(eq(ordersTable.id, tx.orderId))
       .limit(1);
+
+    // A successful payment auto-advances the order to "confirmed" — notify the
+    // customer just like an admin-driven status change would.
+    if (newStatus === "success" && order) {
+      notifyOrderStatus(order, "confirmed");
+    }
 
     return res.json({
       status: newStatus,
