@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -107,6 +107,84 @@ const Field = React.memo(function Field({
   );
 });
 
+type SizeRowState = { id: string; label: string; price: string };
+
+const rid = () => Math.random().toString(36).slice(2);
+
+function sizesToRows(sizes?: { label: string; price: number }[]): SizeRowState[] {
+  if (sizes && sizes.length > 0) {
+    return sizes.map((s) => ({ id: rid(), label: s.label, price: String(s.price) }));
+  }
+  return [{ id: rid(), label: "750ml", price: "" }];
+}
+
+type SizeRowProps = {
+  label: string;
+  price: string;
+  onChangeLabel: (t: string) => void;
+  onChangePrice: (t: string) => void;
+  onRemove?: () => void;
+  colors: ReturnType<typeof useColors>;
+};
+
+// Module scope so its identity is stable across renders (see Field above) —
+// otherwise the size inputs would remount and dismiss the keyboard on each keystroke.
+const SizeRow = React.memo(function SizeRow({
+  label,
+  price,
+  onChangeLabel,
+  onChangePrice,
+  onRemove,
+  colors,
+}: SizeRowProps) {
+  return (
+    <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            flex: 1,
+            backgroundColor: colors.secondary,
+            borderColor: colors.border,
+            borderRadius: colors.radius,
+            color: colors.foreground,
+          },
+        ]}
+        placeholder="e.g. 750ml"
+        placeholderTextColor={colors.mutedForeground}
+        value={label}
+        onChangeText={onChangeLabel}
+        autoCapitalize="none"
+      />
+      <TextInput
+        style={[
+          styles.input,
+          {
+            width: 130,
+            backgroundColor: colors.secondary,
+            borderColor: colors.border,
+            borderRadius: colors.radius,
+            color: colors.foreground,
+          },
+        ]}
+        placeholder="Price ₦"
+        placeholderTextColor={colors.mutedForeground}
+        value={price}
+        onChangeText={onChangePrice}
+        keyboardType="numeric"
+      />
+      <Pressable
+        onPress={onRemove}
+        disabled={!onRemove}
+        hitSlop={8}
+        style={{ padding: 6, opacity: onRemove ? 1 : 0.25 }}
+      >
+        <Feather name="trash-2" size={20} color={colors.destructive} />
+      </Pressable>
+    </View>
+  );
+});
+
 export default function ProductFormScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -133,6 +211,7 @@ export default function ProductFormScreen() {
   const [imageColor, setImageColor] = useState(existing?.imageColor ?? "#1a3040");
   const [accentColor, setAccentColor] = useState(existing?.accentColor ?? "#d4a843");
   const [barcode, setBarcode] = useState(existing?.barcode ?? "");
+  const [sizes, setSizes] = useState<SizeRowState[]>(() => sizesToRows(existing?.sizes));
   const [scannerVisible, setScannerVisible] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -164,6 +243,7 @@ export default function ProductFormScreen() {
     setImageColor(e?.imageColor ?? "#1a3040");
     setAccentColor(e?.accentColor ?? "#d4a843");
     setBarcode(e?.barcode ?? "");
+    setSizes(sizesToRows(e?.sizes));
     setErrors({});
     // An existing product already has a deliberate category; a new product's
     // default is "up for grabs" by a barcode lookup until the admin taps a pill.
@@ -181,8 +261,36 @@ export default function ProductFormScreen() {
     if (!name.trim()) e.name = "Product name is required";
     if (!price.trim() || isNaN(Number(price))) e.price = "Valid price is required";
     if (!description.trim()) e.description = "Description is required";
+    const sizeLabels = sizes
+      .map((s) => s.label.trim().toLowerCase())
+      .filter(Boolean);
+    if (sizes.some((s) => s.price.trim() !== "" && isNaN(Number(s.price)))) {
+      e.sizes = "Size prices must be numbers";
+    } else if (sizes.some((s) => s.price.trim() !== "" && !s.label.trim())) {
+      e.sizes = "Each size needs a name";
+    } else if (new Set(sizeLabels).size !== sizeLabels.length) {
+      e.sizes = "Each size must have a different name";
+    }
     return e;
   };
+
+  const updateSizeField = useCallback(
+    (id: string, field: "label" | "price", t: string) => {
+      setSizes((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, [field]: t } : s)),
+      );
+      setErrors((prev) => (prev.sizes ? { ...prev, sizes: "" } : prev));
+    },
+    [],
+  );
+
+  const addSize = useCallback(() => {
+    setSizes((prev) => [...prev, { id: rid(), label: "", price: "" }]);
+  }, []);
+
+  const removeSize = useCallback((id: string) => {
+    setSizes((prev) => prev.filter((s) => s.id !== id));
+  }, []);
 
   const applyPayload = (payload: Record<string, unknown>) => {
     const str = (v: unknown) => (v == null ? undefined : String(v));
@@ -203,6 +311,19 @@ export default function ProductFormScreen() {
     if (str(payload.abv)) setAbv(str(payload.abv)!);
     if (Array.isArray(payload.tags)) setTags(payload.tags.join(", "));
     if (str(payload.barcode)) setBarcode(str(payload.barcode)!);
+    if (Array.isArray(payload.sizes)) {
+      const rows = (payload.sizes as unknown[])
+        .filter(
+          (s): s is { label: unknown; price?: unknown } =>
+            !!s && typeof s === "object" && "label" in s && (s as any).label != null,
+        )
+        .map((s) => ({
+          id: rid(),
+          label: String((s as any).label),
+          price: (s as any).price != null ? String((s as any).price) : "",
+        }));
+      if (rows.length > 0) setSizes(rows);
+    }
     setErrors({});
   };
 
@@ -388,18 +509,33 @@ export default function ProductFormScreen() {
       return;
     }
 
+    // Build the purchasable sizes from the editor. A row with a blank price
+    // inherits the base price above, so the admin never has to type it twice.
+    const base = parseFloat(price);
+    const finalSizes = (() => {
+      const parsed = sizes
+        .map((s) => ({
+          label: s.label.trim(),
+          price: s.price.trim() ? parseFloat(s.price) : base,
+        }))
+        .filter((s) => s.label && !isNaN(s.price) && s.price > 0);
+      return parsed.length > 0 ? parsed : [{ label: "750ml", price: base }];
+    })();
+
     const productData = {
       name: name.trim(),
       shortName: shortName.trim() || name.trim().split(" ").slice(0, 3).join(" "),
       category,
-      price: parseFloat(price),
+      // Card/headline price follows the first size — the server normalizes it the
+      // same way, so keep the optimistic local copy consistent.
+      price: finalSizes[0]!.price,
       currency: "₦",
       rating: existing?.rating ?? 4.5,
       reviewCount: existing?.reviewCount ?? 0,
       description: description.trim(),
       shortDescription: shortDesc.trim() || description.trim().slice(0, 120),
       ingredients: existing?.ingredients ?? [],
-      sizes: existing?.sizes ?? [{ label: "750ml", price: parseFloat(price) }],
+      sizes: finalSizes,
       imageUri: imageUri.trim(),
       imageColor,
       accentColor,
@@ -538,6 +674,49 @@ export default function ProductFormScreen() {
           error={errors.price}
           errorKey="price"
         />
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          Base price for your standard size. The first size below uses this unless
+          you give it its own price, and it's what shows on product cards.
+        </Text>
+
+        {/* Sizes & pricing */}
+        <View style={{ gap: 10 }}>
+          <Text style={[styles.label, { color: colors.foreground }]}>
+            Sizes & Pricing
+          </Text>
+          {sizes.map((s) => (
+            <SizeRow
+              key={s.id}
+              label={s.label}
+              price={s.price}
+              colors={colors}
+              onChangeLabel={(t) => updateSizeField(s.id, "label", t)}
+              onChangePrice={(t) => updateSizeField(s.id, "price", t)}
+              onRemove={sizes.length > 1 ? () => removeSize(s.id) : undefined}
+            />
+          ))}
+          {errors.sizes ? (
+            <Text style={[styles.error, { color: colors.destructive }]}>
+              {errors.sizes}
+            </Text>
+          ) : null}
+          <Pressable
+            onPress={addSize}
+            style={[
+              styles.scanBtn,
+              { borderColor: colors.primary, borderRadius: colors.radius },
+            ]}
+          >
+            <Feather name="plus" size={20} color={colors.primary} />
+            <Text style={[styles.scanBtnText, { color: colors.primary }]}>
+              Add Size
+            </Text>
+          </Pressable>
+          <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+            The sizes a customer can choose (e.g. 750ml, 1 Litre). Leave a size's
+            price blank to use the headline price above.
+          </Text>
+        </View>
 
         <Field
           colors={colors}

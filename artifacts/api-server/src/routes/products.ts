@@ -18,12 +18,21 @@ function isDuplicateBarcodeError(err: unknown): boolean {
 
 function sanitizeSizes(input: unknown): ProductSize[] {
   if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
   return input
     .map((s: any) => ({
       label: String(s?.label ?? "").trim(),
       price: Math.max(0, Math.floor(Number(s?.price ?? 0))),
     }))
-    .filter((s) => s.label.length > 0 && s.price > 0);
+    .filter((s) => {
+      if (s.label.length === 0 || s.price <= 0) return false;
+      // Drop duplicate labels — cart identity and order pricing both key on
+      // (drinkId, sizeLabel), so duplicate labels would charge the wrong variant.
+      const key = s.label.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }
 
 function normalizeBody(body: any) {
