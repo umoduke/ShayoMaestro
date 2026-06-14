@@ -78,6 +78,15 @@ router.get("/payments/verify/:reference", async (req, res) => {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
+    // Capture the order state BEFORE mutating so re-verifications are idempotent
+    // and can't regress an already-paid order (e.g. one already shipped).
+    const [existingOrder] = await db
+      .select()
+      .from(ordersTable)
+      .where(eq(ordersTable.id, tx.orderId))
+      .limit(1);
+    const alreadyPaid = existingOrder?.paymentStatus === "paid";
+
     let newStatus: "success" | "failed" | "pending" =
       data.status === "success"
         ? "success"
@@ -117,7 +126,10 @@ router.get("/payments/verify/:reference", async (req, res) => {
       })
       .where(eq(transactionsTable.id, tx.id));
 
-    if (newStatus === "success") {
+    // Only mutate order state on the FIRST successful/failed verification.
+    // Once an order is paid we never regress it (a later re-verify is a no-op).
+    let didConfirm = false;
+    if (newStatus === "success" && !alreadyPaid) {
       await db
         .update(ordersTable)
         .set({
@@ -126,7 +138,8 @@ router.get("/payments/verify/:reference", async (req, res) => {
           updatedAt: new Date(),
         })
         .where(eq(ordersTable.id, tx.orderId));
-    } else if (newStatus === "failed") {
+      didConfirm = true;
+    } else if (newStatus === "failed" && !alreadyPaid) {
       await db
         .update(ordersTable)
         .set({ paymentStatus: "failed", updatedAt: new Date() })
@@ -140,8 +153,8 @@ router.get("/payments/verify/:reference", async (req, res) => {
       .limit(1);
 
     // A successful payment auto-advances the order to "confirmed" — notify the
-    // customer just like an admin-driven status change would.
-    if (newStatus === "success" && order) {
+    // customer once, only on the actual transition (not on repeat verifies).
+    if (didConfirm && order) {
       notifyOrderStatus(order, "confirmed");
     }
 

@@ -98,6 +98,7 @@ export interface ApiOrder {
   discountKobo: number;
   totalKobo: number;
   promoCode: string | null;
+  fulfillmentType: string;
   paymentMethod: string;
   paymentStatus: string;
   fulfillmentStatus: string;
@@ -168,6 +169,7 @@ export interface CreateOrderInput {
   deliveryAddress: string;
   deliveryCity?: string;
   deliveryState?: string;
+  fulfillmentType?: "delivery" | "pickup";
   items: ApiOrderItem[];
   subtotal: number;
   discount: number;

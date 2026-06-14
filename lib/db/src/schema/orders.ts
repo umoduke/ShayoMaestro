@@ -21,6 +21,7 @@ export const ordersTable = pgTable("orders", {
   discountKobo: integer("discount_kobo").notNull().default(0),
   totalKobo: integer("total_kobo").notNull(),
   promoCode: text("promo_code"),
+  fulfillmentType: text("fulfillment_type").notNull().default("delivery"),
   paymentMethod: text("payment_method").notNull().default("paystack"),
   paymentStatus: text("payment_status").notNull().default("pending"),
   fulfillmentStatus: text("fulfillment_status").notNull().default("processing"),

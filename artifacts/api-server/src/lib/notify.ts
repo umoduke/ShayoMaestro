@@ -99,7 +99,9 @@ function buildEmailHtml(order: Order, copy: NonNullable<ReturnType<typeof status
         <ul style="padding-left:18px;margin:0;font-size:14px;color:#444;">${items}</ul>
         <p style="margin:12px 0 0;font-weight:700;">Total: ${formatNaira(order.totalKobo)}</p>
       </div>
-      <p style="font-size:13px;color:#888;">Delivery to: ${order.deliveryAddress}${
+      <p style="font-size:13px;color:#888;">${
+        order.fulfillmentType === "pickup" ? "Pickup at" : "Delivery to"
+      }: ${order.deliveryAddress}${
         order.deliveryCity ? ", " + order.deliveryCity : ""
       }${order.deliveryState ? ", " + order.deliveryState : ""}</p>
     </div>

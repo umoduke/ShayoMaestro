@@ -66,6 +66,11 @@ router.post("/orders", async (req, res) => {
       .slice(2, 8)
       .toUpperCase()}`;
 
+    const fulfillmentType =
+      String(body.fulfillmentType ?? "delivery") === "pickup"
+        ? "pickup"
+        : "delivery";
+
     const requestedDiscountNaira = Math.max(0, Math.floor(Number(body.discount ?? 0)));
     const discountNaira = Math.min(requestedDiscountNaira, subtotalNaira);
     const subtotalKobo = subtotalNaira * 100;
@@ -82,6 +87,7 @@ router.post("/orders", async (req, res) => {
         deliveryAddress: String(body.deliveryAddress ?? "").trim(),
         deliveryCity: body.deliveryCity ? String(body.deliveryCity) : null,
         deliveryState: body.deliveryState ? String(body.deliveryState) : null,
+        fulfillmentType,
         items,
         subtotalKobo,
         discountKobo,

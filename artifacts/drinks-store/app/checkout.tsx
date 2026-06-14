@@ -25,6 +25,13 @@ import { api } from "@/lib/api";
 const PAYMENT_METHODS = ["Pay with Paystack", "Pay on Delivery"];
 const formatNaira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
+const PICKUP_LOCATION = {
+  address: "1 Imam Ligali Street, Ogudu Ori-oke, Lagos",
+  hours: "Monday – Saturday, 9am – 6pm",
+};
+
+type FulfillmentType = "delivery" | "pickup";
+
 export default function CheckoutScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -37,6 +44,7 @@ export default function CheckoutScreen() {
   const [email, setEmail] = useState(user?.email ?? "");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("delivery");
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [placed, setPlaced] = useState(false);
@@ -86,7 +94,8 @@ export default function CheckoutScreen() {
     if (!name.trim()) e.name = "Name is required";
     if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim()))
       e.email = "Valid email is required";
-    if (!address.trim()) e.address = "Delivery address is required";
+    if (fulfillmentType === "delivery" && !address.trim())
+      e.address = "Delivery address is required";
     if (!phone.trim()) e.phone = "Phone number is required";
     return e;
   };
@@ -100,12 +109,15 @@ export default function CheckoutScreen() {
     }
     setSubmitting(true);
     setPaymentError("");
+    const isPickup = fulfillmentType === "pickup";
+    const orderAddress = isPickup ? PICKUP_LOCATION.address : address.trim();
     try {
       const { order } = await api.createOrder({
         customerName: name.trim(),
         customerEmail: email.trim(),
         customerPhone: phone.trim(),
-        deliveryAddress: address.trim(),
+        deliveryAddress: orderAddress,
+        fulfillmentType,
         items: items.map((item) => ({
           drinkId: String(item.drinkId),
           drinkName: item.drinkName,
@@ -119,11 +131,12 @@ export default function CheckoutScreen() {
         paymentMethod: paymentMethod === "Pay with Paystack" ? "paystack" : "cod",
       });
 
+      const promoSuffix = appliedPromo ? ` · Promo: ${appliedPromo.code}` : "";
       const localId = addOrder(items, finalTotal, {
         name,
-        address: `${address} · ${phone}${
-          appliedPromo ? ` · Promo: ${appliedPromo.code}` : ""
-        }`,
+        address: isPickup
+          ? `Pickup · ${PICKUP_LOCATION.address} · ${phone}${promoSuffix}`
+          : `${orderAddress} · ${phone}${promoSuffix}`,
         paymentMethod,
       });
 
@@ -152,7 +165,9 @@ export default function CheckoutScreen() {
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setPaymentNote(
-          "Order received. We'll contact you via WhatsApp to arrange delivery & payment.",
+          isPickup
+            ? `Order received. Pay on arrival at ${PICKUP_LOCATION.address} (${PICKUP_LOCATION.hours}).`
+            : "Order received. We'll contact you via WhatsApp to arrange delivery & payment.",
         );
       }
 
@@ -378,9 +393,55 @@ export default function CheckoutScreen() {
           </>
         )}
 
-        {/* Delivery Details */}
+        {/* Delivery Method */}
         <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 24 }]}>
-          Delivery Details
+          Delivery Method
+        </Text>
+        <View style={styles.methodRow}>
+          {(["delivery", "pickup"] as FulfillmentType[]).map((type) => {
+            const active = fulfillmentType === type;
+            return (
+              <Pressable
+                key={type}
+                onPress={() => {
+                  setFulfillmentType(type);
+                  if (type === "pickup" && errors.address)
+                    setErrors((e) => ({ ...e, address: "" }));
+                  Haptics.selectionAsync();
+                }}
+                style={[
+                  styles.methodOption,
+                  {
+                    borderColor: active ? colors.primary : colors.border,
+                    backgroundColor: active ? colors.primary + "12" : colors.card,
+                    borderRadius: colors.radius,
+                  },
+                ]}
+              >
+                <Feather
+                  name={type === "delivery" ? "truck" : "home"}
+                  size={20}
+                  color={active ? colors.primary : colors.foreground}
+                />
+                <Text
+                  style={[
+                    styles.methodText,
+                    {
+                      color: active ? colors.primary : colors.foreground,
+                      fontWeight: active ? "700" : "500",
+                    },
+                  ]}
+                >
+                  {type === "delivery" ? "Delivery" : "Pickup"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Customer Details */}
+        <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 24 }]}>
+          {fulfillmentType === "pickup" ? "Your Details" : "Delivery Details"}
         </Text>
         <View style={{ gap: 14 }}>
           <View>
@@ -467,35 +528,66 @@ export default function CheckoutScreen() {
             )}
           </View>
 
-          <View>
-            <Text style={[styles.inputLabel, { color: colors.foreground }]}>Delivery Address</Text>
-            <TextInput
+          {fulfillmentType === "delivery" ? (
+            <View>
+              <Text style={[styles.inputLabel, { color: colors.foreground }]}>Delivery Address</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.addressInput,
+                  {
+                    backgroundColor: colors.secondary,
+                    borderColor: errors.address ? colors.destructive : colors.border,
+                    borderRadius: colors.radius,
+                    color: colors.foreground,
+                  },
+                ]}
+                placeholder="Street address, City, State"
+                placeholderTextColor={colors.mutedForeground}
+                value={address}
+                onChangeText={(t) => {
+                  setAddress(t);
+                  if (errors.address) setErrors((e) => ({ ...e, address: "" }));
+                }}
+                multiline
+                numberOfLines={2}
+              />
+              {errors.address && (
+                <Text style={[styles.error, { color: colors.destructive }]}>
+                  {errors.address}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <View
               style={[
-                styles.input,
-                styles.addressInput,
+                styles.pickupCard,
                 {
-                  backgroundColor: colors.secondary,
-                  borderColor: errors.address ? colors.destructive : colors.border,
+                  backgroundColor: colors.primary + "0d",
+                  borderColor: colors.primary + "44",
                   borderRadius: colors.radius,
-                  color: colors.foreground,
                 },
               ]}
-              placeholder="Street address, City, State"
-              placeholderTextColor={colors.mutedForeground}
-              value={address}
-              onChangeText={(t) => {
-                setAddress(t);
-                if (errors.address) setErrors((e) => ({ ...e, address: "" }));
-              }}
-              multiline
-              numberOfLines={2}
-            />
-            {errors.address && (
-              <Text style={[styles.error, { color: colors.destructive }]}>
-                {errors.address}
-              </Text>
-            )}
-          </View>
+            >
+              <View style={[styles.pickupIcon, { backgroundColor: colors.primary + "1f" }]}>
+                <Feather name="map-pin" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.pickupTitle, { color: colors.foreground }]}>
+                  Pickup Location
+                </Text>
+                <Text style={[styles.pickupAddress, { color: colors.foreground }]}>
+                  {PICKUP_LOCATION.address}
+                </Text>
+                <View style={styles.pickupHoursRow}>
+                  <Feather name="clock" size={12} color={colors.mutedForeground} />
+                  <Text style={[styles.pickupHours, { color: colors.mutedForeground }]}>
+                    {PICKUP_LOCATION.hours}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Payment Method */}
@@ -543,7 +635,9 @@ export default function CheckoutScreen() {
                   },
                 ]}
               >
-                {method}
+                {method === "Pay on Delivery" && fulfillmentType === "pickup"
+                  ? "Pay on Arrival"
+                  : method}
               </Text>
               {paymentMethod === method && (
                 <Feather name="check-circle" size={18} color={colors.primary} />
@@ -731,6 +825,40 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   paymentText: { flex: 1, fontSize: 15 },
+  methodRow: { flexDirection: "row", gap: 10 },
+  methodOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+  },
+  methodText: { fontSize: 15 },
+  pickupCard: {
+    flexDirection: "row",
+    gap: 12,
+    padding: 14,
+    borderWidth: 1,
+  },
+  pickupIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickupTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  pickupAddress: { fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  pickupHoursRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 },
+  pickupHours: { fontSize: 12 },
   footer: { padding: 16, borderTopWidth: 1 },
   placeOrderBtn: {
     flexDirection: "row",
