@@ -2,3 +2,5 @@
 - [Order status notifications](order-status-notifications.md) — notify customers once per real fulfillmentStatus transition; payment verify must be idempotent (guard on pre-mutation paymentStatus) or it resends/regresses.
 - [Product size invariants](product-sizes-invariants.md) — size labels must be unique (cart/order key on label); product card price is derived from sizes[0].price server-side.
 - [In-app image cropper (Expo Go)](expo-in-app-image-crop.md) — custom pinch/zoom+view-shot capture cropper; OS crop can't zoom out; GestureDetector needs own GestureHandlerRootView inside Modal.
+- [Order dual representation](order-dual-representation.md) — every order written twice (JSONB items + normalized order_items); both inserts MUST share one db.transaction.
+- [Auth token scheme](auth-token-scheme.md) — ONE HMAC scheme; user tokens carry sub, admin gates re-check isAdminEmail; super-admin has no users-table row (separate /auth/admin-login).

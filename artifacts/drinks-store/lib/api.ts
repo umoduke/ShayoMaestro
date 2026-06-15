@@ -75,6 +75,18 @@ export async function uploadProductImage(
   return servingPath;
 }
 
+export interface ApiUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  birthday: string | null;
+  tier: string;
+  points: number;
+  totalSpendKobo: number;
+  isAdmin: boolean;
+}
+
 export interface ApiOrderItem {
   drinkId: string;
   drinkName: string;
@@ -233,6 +245,26 @@ export const api = {
         body: JSON.stringify({ email, password }),
       },
     ),
+  signup: (name: string, email: string, password: string, phone?: string) =>
+    request<{ token: string; user: ApiUser }>("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password, phone }),
+    }),
+  login: (email: string, password: string) =>
+    request<{ token: string; user: ApiUser }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  me: () => request<{ user: ApiUser }>("/api/auth/me"),
+  updateProfile: (input: {
+    name?: string;
+    phone?: string | null;
+    birthday?: string | null;
+  }) =>
+    request<{ user: ApiUser }>("/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
   listProducts: () => request<{ products: ApiProduct[] }>("/api/products"),
   lookupBarcode: (barcode: string) =>
     request<{

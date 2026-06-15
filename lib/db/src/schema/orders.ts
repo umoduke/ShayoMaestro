@@ -6,10 +6,14 @@ import {
   jsonb,
   uuid,
 } from "drizzle-orm/pg-core";
+import { usersTable } from "./users";
 
 export const ordersTable = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
   reference: text("reference").notNull().unique(),
+  userId: uuid("user_id").references(() => usersTable.id, {
+    onDelete: "set null",
+  }),
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email").notNull(),
   customerPhone: text("customer_phone").notNull(),
@@ -48,6 +52,22 @@ export const transactionsTable = pgTable("transactions", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Normalized line items (alongside the denormalized `items` JSONB on orders).
+// The JSONB copy keeps existing reads cheap; this table is the relational
+// source of truth for analytics and reporting.
+export const orderItemsTable = pgTable("order_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => ordersTable.id, { onDelete: "cascade" }),
+  productId: text("product_id").notNull(),
+  drinkName: text("drink_name").notNull(),
+  sizeLabel: text("size_label").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPriceKobo: integer("unit_price_kobo").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export interface OrderLineItem {
   drinkId: string;
   drinkName: string;
@@ -61,3 +81,5 @@ export type Order = typeof ordersTable.$inferSelect;
 export type InsertOrder = typeof ordersTable.$inferInsert;
 export type Transaction = typeof transactionsTable.$inferSelect;
 export type InsertTransaction = typeof transactionsTable.$inferInsert;
+export type OrderItem = typeof orderItemsTable.$inferSelect;
+export type InsertOrderItem = typeof orderItemsTable.$inferInsert;

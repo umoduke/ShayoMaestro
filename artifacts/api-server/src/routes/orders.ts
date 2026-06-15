@@ -2,14 +2,17 @@ import { Router, type IRouter } from "express";
 import {
   db,
   ordersTable,
+  orderItemsTable,
   productsTable,
   transactionsTable,
+  usersTable,
   type OrderLineItem,
 } from "@workspace/db";
 import { desc, eq, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { notifyOrderStatus } from "../lib/notify";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { getTokenPayload } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -77,26 +80,63 @@ router.post("/orders", async (req, res) => {
     const discountKobo = discountNaira * 100;
     const totalKobo = Math.max(subtotalKobo - discountKobo, 0);
 
-    const [order] = await db
-      .insert(ordersTable)
-      .values({
-        reference,
-        customerName: String(body.customerName ?? "").trim(),
-        customerEmail: String(body.customerEmail ?? "").trim().toLowerCase(),
-        customerPhone: String(body.customerPhone ?? "").trim(),
-        deliveryAddress: String(body.deliveryAddress ?? "").trim(),
-        deliveryCity: body.deliveryCity ? String(body.deliveryCity) : null,
-        deliveryState: body.deliveryState ? String(body.deliveryState) : null,
-        fulfillmentType,
-        items,
-        subtotalKobo,
-        discountKobo,
-        totalKobo,
-        promoCode: body.promoCode ? String(body.promoCode) : null,
-        paymentMethod: String(body.paymentMethod ?? "paystack"),
-        notes: body.notes ? String(body.notes) : null,
-      })
-      .returning();
+    // Link the order to a customer account when the request carries a valid
+    // user session token. Guest checkout (no/invalid token) leaves userId null.
+    let userId: string | null = null;
+    const payload = getTokenPayload(req.headers.authorization);
+    if (payload?.sub) {
+      const [u] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.id, payload.sub))
+        .limit(1);
+      if (u) userId = u.id;
+    }
+
+    // Write the order and its normalized line items atomically — a partial
+    // failure must never leave an order persisted without its order_items.
+    const order = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(ordersTable)
+        .values({
+          reference,
+          userId,
+          customerName: String(body.customerName ?? "").trim(),
+          customerEmail: String(body.customerEmail ?? "").trim().toLowerCase(),
+          customerPhone: String(body.customerPhone ?? "").trim(),
+          deliveryAddress: String(body.deliveryAddress ?? "").trim(),
+          deliveryCity: body.deliveryCity ? String(body.deliveryCity) : null,
+          deliveryState: body.deliveryState ? String(body.deliveryState) : null,
+          fulfillmentType,
+          items,
+          subtotalKobo,
+          discountKobo,
+          totalKobo,
+          promoCode: body.promoCode ? String(body.promoCode) : null,
+          paymentMethod: String(body.paymentMethod ?? "paystack"),
+          notes: body.notes ? String(body.notes) : null,
+        })
+        .returning();
+
+      if (!created) {
+        throw new Error("Order insert returned no row");
+      }
+
+      // Persist normalized line items (relational source of truth for
+      // reporting), mirroring the denormalized JSONB copy stored on the order.
+      await tx.insert(orderItemsTable).values(
+        items.map((it) => ({
+          orderId: created.id,
+          productId: it.drinkId,
+          drinkName: it.drinkName,
+          sizeLabel: it.sizeLabel,
+          quantity: it.quantity,
+          unitPriceKobo: it.sizePrice * 100,
+        }))
+      );
+
+      return created;
+    });
 
     return res.json({ order });
   } catch (err) {
