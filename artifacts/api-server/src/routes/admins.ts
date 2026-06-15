@@ -3,6 +3,7 @@ import { db, adminEmailsTable } from "@workspace/db";
 import { asc, eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { getTokenPayload } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -25,8 +26,14 @@ router.get("/admins", requireAdmin, async (_req, res) => {
   }
 });
 
+// Requires a valid session token so unauthenticated callers cannot probe which
+// emails are on the admin allowlist before attempting a takeover registration.
 router.get("/admins/check/:email", async (req, res) => {
   try {
+    const payload = getTokenPayload(req.headers.authorization);
+    if (!payload) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
     const email = normalizeEmail(req.params.email);
     if (email === SUPER_ADMIN_EMAIL) {
       return res.json({ isAdmin: true });
