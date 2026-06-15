@@ -1,0 +1,66 @@
+LOYALTY & MEMBERSHIP PROGRAMME
+
+### Tier Structure (spend-based, automatic upgrade)
+- Bronze: 0 – ₦50,000 cumulative spend
+- Silver: ₦50,001 – ₦200,000
+- Gold: ₦200,001+
+
+### Points Engine
+- Earn 1 point per ₦100 spent
+- Points visible on a dashboard with progress bar to next tier
+- Points expire after 12 months of inactivity — send a push notification 7 days before expiry
+
+### Tier Benefits (display clearly on a Members page)
+- Bronze: Early access to new arrivals 24hrs before general public
+- Silver: Bronze benefits + free delivery on all orders + 5% members pricing
+- Gold: Silver benefits + exclusive curator picks monthly + invite to private tasting events + priority customer support
+
+### Paid Membership Option ("Collector's Club")
+- Monthly or annual subscription fee
+- Benefits: free delivery, monthly curator bottle pick, early access to limited editions
+- Managed via a subscription toggle in the user profile
+
+### Member Offers
+- Members-only product drops (visible only when logged in and tier-qualified)
+- Wishlist feature: notify member when a wishlisted item restocks or goes on offer
+- Birthday reward: auto-generate a single-use promo code 7 days before birthday
+
+---
+
+## 3. PROMO CODE ENGINE
+
+### Code Types to support:
+1. Single-use personalised codes (e.g. JOHN20) — one redemption per customer
+2. Referral codes — unique code per user; both referrer and referee get a reward on first order
+3. Milestone codes — auto-triggered at: first purchase, 5th order, 1-year anniversary
+4. Winback codes — auto-generated and sent if customer has not ordered in 60 days
+5. Seasonal/campaign codes — set by admin with expiry date and usage limit
+
+### Code Rules:
+- Each code has: discount type (% or flat), minimum order value, expiry date, max redemptions, eligible products or tiers
+- Single-use codes cannot be shared or reused
+- Codes stack with member pricing only if admin explicitly allows it
+- No public sitewide discount codes — all codes are targeted
+
+### Promo Code Redemption:
+- Input field at checkout
+- Validation feedback in real time (valid, expired, already used, not eligible)
+- Applied discount shown clearly in order summary
+
+---
+
+## 4. PUSH NOTIFICATIONS & AUTOMATED ALERTS
+
+Trigger the following automated notifications (in-app + push):
+
+- Order confirmed
+- Order dispatched
+- Order out for delivery
+- Order delivered
+- Points earned after purchase (show amount)
+- Points expiring in 7 days
+- Tier upgrade achieved ("You've reached Gold!")
+- Wishlist item back in stock
+- Members-only drop available (Gold/Silver only)
+- Winback: "We miss you — here's a code" (after 60 days inactive)
+- Birthday code delivered 7 days before birthday

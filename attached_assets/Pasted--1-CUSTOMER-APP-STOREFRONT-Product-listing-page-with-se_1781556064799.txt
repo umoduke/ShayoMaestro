@@ -1,0 +1,146 @@
+
+
+
+---
+
+## 1. CUSTOMER APP — STOREFRONT
+
+- Product listing page with search and filter (by spirit type, price, origin)
+- Product detail page with description, tasting notes, and stock status
+- Cart and checkout flow
+- Currency toggle: NGN (Naira) or USD — apply conversion at checkout
+- Paystack payment integration supporting Apple Pay, debit and credit cards
+- Order confirmation screen with estimated delivery
+- Order tracking page showing real-time order status
+
+---
+
+## 2. LOYALTY & MEMBERSHIP PROGRAMME
+
+### Tier Structure (spend-based, automatic upgrade)
+- Bronze: 0 – ₦50,000 cumulative spend
+- Silver: ₦50,001 – ₦200,000
+- Gold: ₦200,001+
+
+### Points Engine
+- Earn 1 point per ₦100 spent
+- Points visible on a dashboard with progress bar to next tier
+- Points expire after 12 months of inactivity — send a push notification 7 days before expiry
+
+### Tier Benefits (display clearly on a Members page)
+- Bronze: Early access to new arrivals 24hrs before general public
+- Silver: Bronze benefits + free delivery on all orders + 5% members pricing
+- Gold: Silver benefits + exclusive curator picks monthly + invite to private tasting events + priority customer support
+
+### Paid Membership Option ("Collector's Club")
+- Monthly or annual subscription fee
+- Benefits: free delivery, monthly curator bottle pick, early access to limited editions
+- Managed via a subscription toggle in the user profile
+
+### Member Offers
+- Members-only product drops (visible only when logged in and tier-qualified)
+- Wishlist feature: notify member when a wishlisted item restocks or goes on offer
+- Birthday reward: auto-generate a single-use promo code 7 days before birthday
+
+---
+
+## 3. PROMO CODE ENGINE
+
+### Code Types to support:
+1. Single-use personalised codes (e.g. JOHN20) — one redemption per customer
+2. Referral codes — unique code per user; both referrer and referee get a reward on first order
+3. Milestone codes — auto-triggered at: first purchase, 5th order, 1-year anniversary
+4. Winback codes — auto-generated and sent if customer has not ordered in 60 days
+5. Seasonal/campaign codes — set by admin with expiry date and usage limit
+
+### Code Rules:
+- Each code has: discount type (% or flat), minimum order value, expiry date, max redemptions, eligible products or tiers
+- Single-use codes cannot be shared or reused
+- Codes stack with member pricing only if admin explicitly allows it
+- No public sitewide discount codes — all codes are targeted
+
+### Promo Code Redemption:
+- Input field at checkout
+- Validation feedback in real time (valid, expired, already used, not eligible)
+- Applied discount shown clearly in order summary
+
+---
+
+## 4. PUSH NOTIFICATIONS & AUTOMATED ALERTS
+
+Trigger the following automated notifications (in-app + push):
+
+- Order confirmed
+- Order dispatched
+- Order out for delivery
+- Order delivered
+- Points earned after purchase (show amount)
+- Points expiring in 7 days
+- Tier upgrade achieved ("You've reached Gold!")
+- Wishlist item back in stock
+- Members-only drop available (Gold/Silver only)
+- Winback: "We miss you — here's a code" (after 60 days inactive)
+- Birthday code delivered 7 days before birthday
+
+---
+
+## 5. ADMIN PANEL
+
+### Product Management
+- Add, edit, archive products
+- Fields: name, description, tasting notes, category, price (NGN + USD), stock quantity, images, visibility (public / members-only / tier-restricted)
+- Toggle "members only" per product
+
+### Order Management
+- View all orders with status filter (pending, processing, shipped, delivered, cancelled)
+- Update order status (triggers customer notification automatically)
+- Order detail view with customer info, items, payment method, promo code used
+
+### Loyalty & Membership Management
+- View all members with their tier, points balance, and total spend
+- Manually adjust points (with reason log)
+- View Collector's Club subscribers
+
+### Promo Code Management
+- Create, edit, deactivate codes
+- Set all rules: type, discount, minimum order, expiry, usage limit, eligible tiers
+- View redemption analytics per code (uses, revenue generated, unique customers)
+
+### Notification Centre
+- View all sent notifications with delivery status
+- Manually trigger a push to a segment (e.g. all Gold members)
+
+### Dashboard (overview)
+- Total revenue (NGN / USD toggle)
+- Active members by tier (Bronze / Silver / Gold)
+- Top selling products
+- Promo code redemption rate
+- Orders by status
+
+---
+
+## 6. DATABASE SCHEMA (minimum tables)
+
+- users (id, name, email, phone, birthday, tier, points, total_spend, created_at)
+- products (id, name, description, category, price_ngn, price_usd, stock, members_only, tier_required, created_at)
+- orders (id, user_id, status, total_ngn, total_usd, currency_used, promo_code_id, created_at)
+- order_items (id, order_id, product_id, quantity, unit_price)
+- promo_codes (id, code, type, discount_type, discount_value, min_order, expiry, max_uses, uses_count, eligible_tiers, stackable)
+- promo_redemptions (id, promo_code_id, user_id, order_id, redeemed_at)
+- loyalty_transactions (id, user_id, points_delta, reason, created_at)
+- notifications (id, user_id, type, message, sent_at, read_at)
+- subscriptions (id, user_id, plan, status, started_at, next_billing_at)
+- wishlists (id, user_id, product_id, created_at)
+
+---
+
+## 7. DESIGN GUIDELINES
+
+- Mobile-first, premium feel — dark backgrounds, gold accents, clean typography
+- No cluttered layouts — generous whitespace
+- Tier badges displayed on profile and checkout (Bronze / Silver / Gold with distinct colours)
+- Points balance always visible in nav/header when logged in
+- Members-only content shows a lock icon to logged-out or ineligible users
+
+---
+
