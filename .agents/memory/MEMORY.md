@@ -1,4 +1,5 @@
 - [Expo object storage](expo-object-storage.md) — admin photo upload wired by hand (separate api-server+Expo); relative servingPath imageUri, public route scoped to uploads/ + image/* only.
+- [Loyalty accrual idempotency](loyalty-accrual-idempotency.md) — once-only point/spend/tier accrual on payment confirm needs conditional UPDATE...WHERE != 'paid' + .returning() + user-row FOR UPDATE, never a pre-read guard.
 - [Order status notifications](order-status-notifications.md) — notify customers once per real fulfillmentStatus transition; payment verify must be idempotent (guard on pre-mutation paymentStatus) or it resends/regresses.
 - [Product size invariants](product-sizes-invariants.md) — size labels must be unique (cart/order key on label); product card price is derived from sizes[0].price server-side.
 - [In-app image cropper (Expo Go)](expo-in-app-image-crop.md) — custom pinch/zoom+view-shot capture cropper; OS crop can't zoom out; GestureDetector needs own GestureHandlerRootView inside Modal.

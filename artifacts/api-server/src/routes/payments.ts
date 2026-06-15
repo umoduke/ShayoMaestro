@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import { db, ordersTable, transactionsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, ordersTable, transactionsTable, usersTable } from "@workspace/db";
+import { and, eq, ne } from "drizzle-orm";
 import { paystackInitialize, paystackVerify } from "../lib/paystack";
 import { logger } from "../lib/logger";
-import { notifyOrderStatus } from "../lib/notify";
+import { notifyOrderStatus, notifyLoyaltyEarned } from "../lib/notify";
+import { computeTier, pointsForKobo } from "../lib/loyalty";
 
 const router: IRouter = Router();
 
@@ -129,21 +130,88 @@ router.get("/payments/verify/:reference", async (req, res) => {
     // Only mutate order state on the FIRST successful/failed verification.
     // Once an order is paid we never regress it (a later re-verify is a no-op).
     let didConfirm = false;
+    // Loyalty award captured on the first paid transition. Idempotency is
+    // enforced inside the DB transaction (conditional update + row lock), so
+    // concurrent or repeated verifications can never double-accrue.
+    let loyalty: { pointsEarned: number; upgradedTo: string | null } | null =
+      null;
     if (newStatus === "success" && !alreadyPaid) {
-      await db
-        .update(ordersTable)
-        .set({
-          paymentStatus: "paid",
-          fulfillmentStatus: "confirmed",
-          updatedAt: new Date(),
-        })
-        .where(eq(ordersTable.id, tx.orderId));
-      didConfirm = true;
+      // Mark the order paid AND award loyalty in one transaction so a customer
+      // is never left "paid but no points" (or vice versa).
+      const result = await db.transaction(async (trx) => {
+        // First-writer-wins: only flip the order if it is NOT already paid.
+        // Concurrent verifiers block on this row's lock, then re-evaluate the
+        // predicate against the just-committed "paid" row and match 0 rows —
+        // so exactly one verifier proceeds to accrue points.
+        const confirmedRows = await trx
+          .update(ordersTable)
+          .set({
+            paymentStatus: "paid",
+            fulfillmentStatus: "confirmed",
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(ordersTable.id, tx.orderId),
+              ne(ordersTable.paymentStatus, "paid")
+            )
+          )
+          .returning({ id: ordersTable.id });
+
+        if (confirmedRows.length === 0) {
+          // Lost the race — another verifier already confirmed and accrued.
+          return { confirmed: false, loyalty: null };
+        }
+
+        if (!existingOrder?.userId) {
+          return { confirmed: true, loyalty: null };
+        }
+
+        // Lock the user row so two orders confirming for the same user at once
+        // can't lose an update to points/spend/tier (read-modify-write).
+        const [u] = await trx
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.id, existingOrder.userId))
+          .for("update")
+          .limit(1);
+        if (!u) return { confirmed: true, loyalty: null };
+
+        const pointsEarned = pointsForKobo(existingOrder.totalKobo);
+        const newSpend = u.totalSpendKobo + existingOrder.totalKobo;
+        const newTier = computeTier(newSpend);
+        await trx
+          .update(usersTable)
+          .set({
+            points: u.points + pointsEarned,
+            totalSpendKobo: newSpend,
+            tier: newTier,
+            updatedAt: new Date(),
+          })
+          .where(eq(usersTable.id, u.id));
+
+        return {
+          confirmed: true,
+          loyalty: {
+            pointsEarned,
+            upgradedTo: newTier !== u.tier ? newTier : null,
+          },
+        };
+      });
+      didConfirm = result.confirmed;
+      loyalty = result.loyalty;
     } else if (newStatus === "failed" && !alreadyPaid) {
+      // Never regress a paid order to failed (guard against a stale/racing
+      // verify): only transition while still unpaid.
       await db
         .update(ordersTable)
         .set({ paymentStatus: "failed", updatedAt: new Date() })
-        .where(eq(ordersTable.id, tx.orderId));
+        .where(
+          and(
+            eq(ordersTable.id, tx.orderId),
+            ne(ordersTable.paymentStatus, "paid")
+          )
+        );
     }
 
     const [order] = await db
@@ -156,6 +224,11 @@ router.get("/payments/verify/:reference", async (req, res) => {
     // customer once, only on the actual transition (not on repeat verifies).
     if (didConfirm && order) {
       notifyOrderStatus(order, "confirmed");
+      if (loyalty && (loyalty.pointsEarned > 0 || loyalty.upgradedTo)) {
+        notifyLoyaltyEarned(order, loyalty.pointsEarned, {
+          upgradedTo: loyalty.upgradedTo,
+        });
+      }
     }
 
     return res.json({

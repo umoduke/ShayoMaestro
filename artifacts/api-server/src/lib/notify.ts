@@ -149,6 +149,72 @@ async function sendWhatsApp(_toE164: string, _text: string): Promise<void> {
 }
 
 /**
+ * Fire-and-forget loyalty notification (points earned + optional tier upgrade)
+ * after a confirmed purchase. Never throws. No-ops the channels until the
+ * email/WhatsApp integrations are wired (same as order-status notifications).
+ */
+export function notifyLoyaltyEarned(
+  order: Order,
+  pointsEarned: number,
+  opts?: { upgradedTo?: string | null },
+): void {
+  if (pointsEarned <= 0 && !opts?.upgradedTo) return;
+
+  const tierLabel = opts?.upgradedTo
+    ? opts.upgradedTo.charAt(0).toUpperCase() + opts.upgradedTo.slice(1)
+    : null;
+
+  const heading = tierLabel
+    ? `You've reached ${tierLabel}! 🏆`
+    : "You've earned points ✨";
+  const lines = [
+    `Hi ${order.customerName || "there"},`,
+    pointsEarned > 0
+      ? `You just earned ${pointsEarned} point${pointsEarned === 1 ? "" : "s"} on order ${order.reference}.`
+      : `Thanks for your order ${order.reference}.`,
+    tierLabel
+      ? `Even better — you've been upgraded to ${tierLabel} tier. Enjoy your new benefits!`
+      : "",
+  ].filter(Boolean);
+
+  const subject = tierLabel
+    ? `Welcome to ${tierLabel} — Authentic Shayo Lockerr`
+    : "You've earned loyalty points";
+  const html = `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;">
+    <div style="background:#0d0b08;padding:24px;text-align:center;">
+      <span style="color:#d4a843;font-size:20px;font-weight:800;letter-spacing:1px;">${STORE_NAME}</span>
+    </div>
+    <div style="padding:24px;">
+      <h1 style="font-size:22px;margin:0 0 12px;">${heading}</h1>
+      ${lines.map((l) => `<p style="font-size:15px;line-height:1.5;color:#444;">${l}</p>`).join("")}
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #eee;text-align:center;font-size:12px;color:#aaa;">
+      ${STORE_NAME} • Premium spirits, delivered.
+    </div>
+  </div>`;
+  const waText = [`*${STORE_NAME}*`, "", heading, "", ...lines].join("\n");
+
+  void (async () => {
+    if (order.customerEmail) {
+      try {
+        await sendEmail(order.customerEmail, subject, html);
+      } catch (err) {
+        logger.error({ err, orderId: order.id }, "[notify] loyalty email failed");
+      }
+    }
+    const phone = toE164Nigeria(order.customerPhone);
+    if (phone) {
+      try {
+        await sendWhatsApp(phone, waText);
+      } catch (err) {
+        logger.error({ err, orderId: order.id }, "[notify] loyalty whatsapp failed");
+      }
+    }
+  })();
+}
+
+/**
  * Fire-and-forget customer notification for an order status change.
  * Never throws — each channel is isolated so one failure can't block the other
  * or the request that triggered it.

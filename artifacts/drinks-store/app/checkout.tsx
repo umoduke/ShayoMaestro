@@ -36,7 +36,7 @@ export default function CheckoutScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { items, total, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { addOrder } = useOrders();
   const { validatePromoCode } = useOffers();
 
@@ -150,6 +150,9 @@ export default function CheckoutScreen() {
           const verify = await api.verifyPayment(init.reference);
           if (verify.status === "success") {
             setPaymentNote("Payment successful — your order is confirmed.");
+            // Server awards loyalty points/tier on payment confirm — pull the
+            // updated balance so the profile/members screens reflect it.
+            void refreshUser();
           } else if (verify.status === "failed") {
             setPaymentNote("Payment was not completed. You can retry later.");
           } else {

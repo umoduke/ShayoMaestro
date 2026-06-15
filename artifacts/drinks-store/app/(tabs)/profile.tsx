@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useOrders } from "@/context/OrdersContext";
+import { tierMeta } from "@/lib/loyalty";
 import {
   useSettings,
   ThemeMode,
@@ -94,9 +95,16 @@ function MenuItem({ icon, label, value, onPress, danger }: MenuItemProps) {
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { favorites } = useFavorites();
   const { orders } = useOrders();
+
+  React.useEffect(() => {
+    void refreshUser();
+  }, [refreshUser]);
+
+  const tier = user ? tierMeta(user.tier ?? "bronze") : null;
+  const points = user?.points ?? 0;
   const { themeMode, setThemeMode, notifications, setNotification } = useSettings();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -202,7 +210,29 @@ export default function ProfileScreen() {
               Favorites
             </Text>
           </View>
+          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.stat}>
+            <Text style={[styles.statNum, { color: colors.foreground }]}>
+              {points.toLocaleString("en-NG")}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
+              Points
+            </Text>
+          </View>
         </View>
+
+        {tier && (
+          <Pressable
+            onPress={() => router.push("/membership" as any)}
+            style={[styles.tierBadge, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <View style={[styles.tierBadgeDot, { backgroundColor: tier.color }]} />
+            <Text style={[styles.tierBadgeText, { color: colors.foreground }]}>
+              {tier.label} Member
+            </Text>
+            <Feather name="chevron-right" size={15} color={colors.mutedForeground} />
+          </Pressable>
+        )}
       </View>
 
       {/* Menu */}
@@ -221,6 +251,12 @@ export default function ProfileScreen() {
           label="Favorites"
           value={`${favorites.length}`}
           onPress={() => router.push("/(tabs)/favorites" as any)}
+        />
+        <MenuItem
+          icon="award"
+          label="Members Club"
+          value={tier ? tier.label : undefined}
+          onPress={() => router.push("/membership" as any)}
         />
 
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: 8 }]}>
@@ -491,6 +527,25 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 36,
+  },
+  tierBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+  },
+  tierBadgeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  tierBadgeText: {
+    fontSize: 14,
+    fontWeight: "700",
   },
   sectionLabel: {
     fontSize: 11,
