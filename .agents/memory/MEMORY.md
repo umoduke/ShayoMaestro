@@ -1,4 +1,5 @@
 - [Expo object storage](expo-object-storage.md) — admin photo upload wired by hand (separate api-server+Expo); relative servingPath imageUri, public route scoped to uploads/ + image/* only.
+- [Per-user AsyncStorage hydration](per-user-asyncstorage-hydration.md) — re-keying a context's persisted state per user: hydratedKey ref gates persistence + pendingAdds buffer avoids clobber/event-loss on switch.
 - [Loyalty accrual idempotency](loyalty-accrual-idempotency.md) — once-only point/spend/tier accrual on payment confirm needs conditional UPDATE...WHERE != 'paid' + .returning() + user-row FOR UPDATE, never a pre-read guard.
 - [Order status notifications](order-status-notifications.md) — notify customers once per real fulfillmentStatus transition; payment verify must be idempotent (guard on pre-mutation paymentStatus) or it resends/regresses.
 - [Product size invariants](product-sizes-invariants.md) — size labels must be unique (cart/order key on label); product card price is derived from sizes[0].price server-side.

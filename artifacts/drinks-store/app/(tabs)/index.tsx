@@ -19,11 +19,13 @@ import { DrinkCard } from "@/components/DrinkCard";
 import { SearchBar } from "@/components/SearchBar";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useNotifications } from "@/context/NotificationsContext";
 import { CartBadge } from "@/components/CartBadge";
 import { DrinkCategory, formatPrice } from "@/data/drinks";
 import { useColors } from "@/hooks/useColors";
 import { ProductImage } from "@/components/ProductImage";
 import { useProducts } from "@/context/ProductsContext";
+import { tierMeta } from "@/lib/loyalty";
 
 const ASL_LOGO = require("@/assets/images/asl-logo.webp");
 
@@ -33,6 +35,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { itemCount } = useCart();
   const { products } = useProducts();
+  const { unreadCount } = useNotifications();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<DrinkCategory>("all");
 
@@ -95,6 +98,19 @@ export default function HomeScreen() {
             </Pressable>
           )}
           <Pressable
+            onPress={() => router.push("/notifications" as any)}
+            style={styles.iconBtnDark}
+          >
+            <Feather name="bell" size={18} color="#f5e6c8" />
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable
             onPress={() => router.push("/(tabs)/cart" as any)}
             style={styles.iconBtnDark}
           >
@@ -103,6 +119,33 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* Loyalty quick-glance — always-visible points/tier when signed in */}
+      {user && (
+        <Pressable
+          onPress={() => router.push("/membership" as any)}
+          style={styles.loyaltyStrip}
+        >
+          <View style={styles.loyaltyLeft}>
+            <View
+              style={[
+                styles.loyaltyTierDot,
+                { backgroundColor: tierMeta(user.tier ?? "bronze").color },
+              ]}
+            />
+            <Text style={styles.loyaltyTierText}>
+              {tierMeta(user.tier ?? "bronze").label} Member
+            </Text>
+          </View>
+          <View style={styles.loyaltyRight}>
+            <Feather name="star" size={12} color="#d4a843" />
+            <Text style={styles.loyaltyPointsText}>
+              {(user.points ?? 0).toLocaleString("en-NG")} pts
+            </Text>
+            <Feather name="chevron-right" size={14} color="#9a8a6c" />
+          </View>
+        </Pressable>
+      )}
 
       {/* Tagline */}
       {!isSearching && (
@@ -308,6 +351,61 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ffffff12",
+  },
+  bellBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 100,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#d4a843",
+  },
+  bellBadgeText: {
+    color: "#0d0b08",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  loyaltyStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: "#0d0b08",
+    borderWidth: 1,
+    borderColor: "#d4a84355",
+  },
+  loyaltyLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  loyaltyTierDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  loyaltyTierText: {
+    color: "#f5e6c8",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  loyaltyRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  loyaltyPointsText: {
+    color: "#d4a843",
+    fontSize: 13,
+    fontWeight: "800",
   },
   offersBanner: {
     flexDirection: "row",

@@ -234,6 +234,9 @@ router.get("/payments/verify/:reference", async (req, res) => {
     return res.json({
       status: newStatus,
       order,
+      // Surfaced so the client can show a "you earned X points / reached <Tier>"
+      // confirmation. Non-null only on the first paid transition for a member.
+      loyalty,
       paystack: {
         reference: data.reference,
         amount: data.amount,

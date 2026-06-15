@@ -311,6 +311,7 @@ export const api = {
     request<{
       status: "success" | "failed" | "pending";
       order: ApiOrder;
+      loyalty: { pointsEarned: number; upgradedTo: string | null } | null;
       paystack: {
         reference: string;
         amount: number;

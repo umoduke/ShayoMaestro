@@ -19,6 +19,8 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useOffers } from "@/context/OffersContext";
 import { useOrders } from "@/context/OrdersContext";
+import { useNotifications } from "@/context/NotificationsContext";
+import { tierMeta } from "@/lib/loyalty";
 import { useColors } from "@/hooks/useColors";
 import { api } from "@/lib/api";
 
@@ -39,6 +41,7 @@ export default function CheckoutScreen() {
   const { user, refreshUser } = useAuth();
   const { addOrder } = useOrders();
   const { validatePromoCode } = useOffers();
+  const { addNotification } = useNotifications();
 
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -153,6 +156,29 @@ export default function CheckoutScreen() {
             // Server awards loyalty points/tier on payment confirm — pull the
             // updated balance so the profile/members screens reflect it.
             void refreshUser();
+            addNotification({
+              kind: "order",
+              title: "Order confirmed",
+              body: `Your payment was successful — order ${order.reference} is confirmed. We'll keep you posted on delivery.`,
+            });
+            if (verify.loyalty && verify.loyalty.pointsEarned > 0) {
+              addNotification({
+                kind: "points",
+                title: "Points earned",
+                body: `You earned ${verify.loyalty.pointsEarned.toLocaleString(
+                  "en-NG",
+                )} points on this order. Keep shopping to climb the tiers.`,
+              });
+            }
+            if (verify.loyalty?.upgradedTo) {
+              addNotification({
+                kind: "tier",
+                title: "Tier upgraded",
+                body: `Congratulations — you've reached ${
+                  tierMeta(verify.loyalty.upgradedTo).label
+                }! Enjoy your new member benefits.`,
+              });
+            }
           } else if (verify.status === "failed") {
             setPaymentNote("Payment was not completed. You can retry later.");
           } else {
@@ -172,6 +198,13 @@ export default function CheckoutScreen() {
             ? `Order received. Pay on arrival at ${PICKUP_LOCATION.address} (${PICKUP_LOCATION.hours}).`
             : "Order received. We'll contact you via WhatsApp to arrange delivery & payment.",
         );
+        addNotification({
+          kind: "order",
+          title: "Order received",
+          body: isPickup
+            ? `Order ${order.reference} is reserved for pickup at ${PICKUP_LOCATION.address}. Pay on arrival.`
+            : `Order ${order.reference} received. We'll contact you on WhatsApp to arrange delivery & payment.`,
+        });
       }
 
       setOrderId(localId);
