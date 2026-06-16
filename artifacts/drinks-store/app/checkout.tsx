@@ -17,12 +17,12 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { useOffers } from "@/context/OffersContext";
 import { useOrders } from "@/context/OrdersContext";
 import { useNotifications } from "@/context/NotificationsContext";
 import { tierMeta } from "@/lib/loyalty";
 import { useColors } from "@/hooks/useColors";
 import { api } from "@/lib/api";
+import { computePreview } from "@/lib/pricing";
 
 const PAYMENT_METHODS = ["Pay with Paystack", "Pay on Delivery"];
 const formatNaira = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
@@ -40,7 +40,6 @@ export default function CheckoutScreen() {
   const { items, total, clearCart } = useCart();
   const { user, refreshUser } = useAuth();
   const { addOrder } = useOrders();
-  const { validatePromoCode } = useOffers();
   const { addNotification } = useNotifications();
 
   const [name, setName] = useState(user?.name ?? "");
@@ -57,30 +56,64 @@ export default function CheckoutScreen() {
   const [paymentError, setPaymentError] = useState<string>("");
   const [promoInput, setPromoInput] = useState("");
   const [promoError, setPromoError] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<{
     code: string;
-    discount: number;
+    discountKobo: number;
+    stackable: boolean;
     label: string;
   } | null>(null);
 
-  const discount = appliedPromo?.discount ?? 0;
-  const finalTotal = Math.max(total - discount, 0);
+  const subtotalKobo = Math.round(total * 100);
+  // Advisory preview only — the server recomputes all pricing authoritatively
+  // when the order is created (see lib/pricing.ts).
+  const preview = computePreview({
+    subtotalKobo,
+    tier: user?.tier,
+    fulfillmentType,
+    promo: appliedPromo
+      ? {
+          code: appliedPromo.code,
+          discountKobo: appliedPromo.discountKobo,
+          stackable: appliedPromo.stackable,
+        }
+      : null,
+  });
+  const discount = preview.promoDiscountKobo / 100;
+  const memberDiscount = preview.memberDiscountKobo / 100;
+  const deliveryFee = preview.deliveryFeeKobo / 100;
+  const finalTotal = preview.totalKobo / 100;
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     setPromoError("");
-    const result = validatePromoCode(promoInput, total, !!user);
-    if (!result.success || !result.offer || !result.discountAmount) {
-      setPromoError(result.error ?? "Invalid code");
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoChecking(true);
+    try {
+      const result = await api.validatePromo(
+        code,
+        subtotalKobo,
+        email.trim() || undefined,
+      );
+      if (!result.valid || !result.code) {
+        setPromoError(result.message ?? "Invalid code");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        return;
+      }
+      setAppliedPromo({
+        code: result.code.code,
+        discountKobo: result.discountKobo,
+        stackable: result.code.stackable,
+        label: result.code.description ?? "Promo applied",
+      });
+      setPromoInput("");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      setPromoError("Couldn't check that code. Try again.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
+    } finally {
+      setPromoChecking(false);
     }
-    setAppliedPromo({
-      code: result.offer.code,
-      discount: result.discountAmount,
-      label: result.offer.title,
-    });
-    setPromoInput("");
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handleRemovePromo = () => {
@@ -115,7 +148,7 @@ export default function CheckoutScreen() {
     const isPickup = fulfillmentType === "pickup";
     const orderAddress = isPickup ? PICKUP_LOCATION.address : address.trim();
     try {
-      const { order } = await api.createOrder({
+      const { order, promo } = await api.createOrder({
         customerName: name.trim(),
         customerEmail: email.trim(),
         customerPhone: phone.trim(),
@@ -128,14 +161,20 @@ export default function CheckoutScreen() {
           sizePrice: item.sizePrice,
           quantity: item.quantity,
         })),
-        subtotal: total,
-        discount: discount,
         promoCode: appliedPromo?.code,
         paymentMethod: paymentMethod === "Pay with Paystack" ? "paystack" : "cod",
       });
 
-      const promoSuffix = appliedPromo ? ` · Promo: ${appliedPromo.code}` : "";
-      const localId = addOrder(items, finalTotal, {
+      // The server is authoritative for pricing — use its computed total and
+      // tell the customer if their promo couldn't be applied.
+      const serverTotal = order.totalKobo / 100;
+      if (appliedPromo && !promo.applied) {
+        setAppliedPromo(null);
+        if (promo.message) setPaymentNote(promo.message);
+      }
+      const promoSuffix =
+        appliedPromo && promo.applied ? ` · Promo: ${appliedPromo.code}` : "";
+      const localId = addOrder(items, serverTotal, {
         name,
         address: isPickup
           ? `Pickup · ${PICKUP_LOCATION.address} · ${phone}${promoSuffix}`
@@ -319,7 +358,17 @@ export default function CheckoutScreen() {
               {formatNaira(total)}
             </Text>
           </View>
-          {appliedPromo && (
+          {memberDiscount > 0 && (
+            <View style={styles.subRow}>
+              <Text style={[styles.subLabel, { color: "#10b981" }]}>
+                Member discount (5%)
+              </Text>
+              <Text style={[styles.subValue, { color: "#10b981" }]}>
+                -{formatNaira(memberDiscount)}
+              </Text>
+            </View>
+          )}
+          {appliedPromo && discount > 0 && (
             <View style={styles.subRow}>
               <Text style={[styles.subLabel, { color: "#10b981" }]}>
                 Discount ({appliedPromo.code})
@@ -327,6 +376,20 @@ export default function CheckoutScreen() {
               <Text style={[styles.subValue, { color: "#10b981" }]}>
                 -{formatNaira(discount)}
               </Text>
+            </View>
+          )}
+          {fulfillmentType === "delivery" && (
+            <View style={styles.subRow}>
+              <Text style={[styles.subLabel, { color: colors.mutedForeground }]}>
+                Delivery fee
+              </Text>
+              {deliveryFee > 0 ? (
+                <Text style={[styles.subValue, { color: colors.foreground }]}>
+                  {formatNaira(deliveryFee)}
+                </Text>
+              ) : (
+                <Text style={[styles.subValue, { color: "#10b981" }]}>Free</Text>
+              )}
             </View>
           )}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -388,7 +451,7 @@ export default function CheckoutScreen() {
               />
               <Pressable
                 onPress={handleApplyPromo}
-                disabled={!promoInput.trim()}
+                disabled={!promoInput.trim() || promoChecking}
                 style={[
                   styles.applyBtn,
                   {
@@ -397,18 +460,22 @@ export default function CheckoutScreen() {
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.applyBtnText,
-                    {
-                      color: promoInput.trim()
-                        ? colors.primaryForeground
-                        : colors.mutedForeground,
-                    },
-                  ]}
-                >
-                  Apply
-                </Text>
+                {promoChecking ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <Text
+                    style={[
+                      styles.applyBtnText,
+                      {
+                        color: promoInput.trim()
+                          ? colors.primaryForeground
+                          : colors.mutedForeground,
+                      },
+                    ]}
+                  >
+                    Apply
+                  </Text>
+                )}
               </Pressable>
             </View>
             {promoError ? (

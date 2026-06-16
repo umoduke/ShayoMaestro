@@ -108,8 +108,11 @@ export interface ApiOrder {
   items: ApiOrderItem[];
   subtotalKobo: number;
   discountKobo: number;
+  memberDiscountKobo: number;
+  deliveryFeeKobo: number;
   totalKobo: number;
   promoCode: string | null;
+  promoCodeId: string | null;
   fulfillmentType: string;
   paymentMethod: string;
   paymentStatus: string;
@@ -183,11 +186,61 @@ export interface CreateOrderInput {
   deliveryState?: string;
   fulfillmentType?: "delivery" | "pickup";
   items: ApiOrderItem[];
-  subtotal: number;
-  discount: number;
+  // Pricing is computed authoritatively by the server (member pricing, delivery
+  // fee, promo). The promo code is the only pricing input the client sends.
   promoCode?: string;
   paymentMethod?: string;
   notes?: string;
+}
+
+export interface PromoValidation {
+  valid: boolean;
+  reason: string | null;
+  message: string | null;
+  discountKobo: number;
+  code: {
+    code: string;
+    description: string | null;
+    discountType: "percent" | "flat";
+    discountValue: number;
+    stackable: boolean;
+  } | null;
+}
+
+export interface ApiPromoCode {
+  id: string;
+  code: string;
+  type: string;
+  discountType: "percent" | "flat";
+  discountValue: number;
+  minOrderKobo: number;
+  maxDiscountKobo: number | null;
+  expiresAt: string | null;
+  maxUses: number | null;
+  usesCount: number;
+  perUserLimit: number;
+  eligibleTiers: string[] | null;
+  stackable: boolean;
+  active: boolean;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromoInput {
+  code: string;
+  type: string;
+  discountType: "percent" | "flat";
+  discountValue: number;
+  minOrderKobo?: number;
+  maxDiscountKobo?: number | null;
+  expiresAt?: string | null;
+  maxUses?: number | null;
+  perUserLimit?: number;
+  eligibleTiers?: string[] | null;
+  stackable?: boolean;
+  active?: boolean;
+  description?: string | null;
 }
 
 export interface ApiProductSize {
@@ -285,10 +338,31 @@ export const api = {
   deleteProduct: (id: string) =>
     request<{ ok: true }>(`/api/products/${id}`, { method: "DELETE" }),
   createOrder: (input: CreateOrderInput) =>
-    request<{ order: ApiOrder }>("/api/orders", {
+    request<{
+      order: ApiOrder;
+      promo: { applied: boolean; message: string | null };
+    }>("/api/orders", {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  validatePromo: (code: string, subtotalKobo: number, email?: string) =>
+    request<PromoValidation>("/api/promos/validate", {
+      method: "POST",
+      body: JSON.stringify({ code, subtotalKobo, email }),
+    }),
+  listPromos: () => request<{ promos: ApiPromoCode[] }>("/api/promos"),
+  createPromo: (input: PromoInput) =>
+    request<{ promo: ApiPromoCode }>("/api/promos", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updatePromo: (id: string, input: PromoInput) =>
+    request<{ promo: ApiPromoCode }>(`/api/promos/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  deletePromo: (id: string) =>
+    request<{ ok: true }>(`/api/promos/${id}`, { method: "DELETE" }),
   listOrders: () => request<{ orders: ApiOrder[] }>("/api/orders"),
   getOrder: (id: string) =>
     request<{ order: ApiOrder; transactions: ApiTransaction[] }>(

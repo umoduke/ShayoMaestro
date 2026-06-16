@@ -65,3 +65,38 @@ export function pointsForKobo(totalKobo: number): number {
   if (!Number.isFinite(totalKobo) || totalKobo <= 0) return 0;
   return Math.floor(totalKobo / KOBO_PER_POINT);
 }
+
+// --- Tier benefits applied to pricing -------------------------------------
+// Silver & Gold members get 5% members pricing and free delivery; Bronze and
+// guests get neither. These are enforced server-side so the client can never
+// award itself a member discount.
+
+/** Members pricing percentage for Silver/Gold. */
+export const MEMBER_DISCOUNT_PERCENT = 5;
+
+/**
+ * Standard delivery fee (kobo) charged on delivery orders. Waived for pickup
+ * and for Silver/Gold members (their free-delivery benefit). ₦2,500.
+ */
+export const DELIVERY_FEE_KOBO = 250_000;
+
+/** True if the tier enjoys member pricing + free delivery. */
+export function isMemberTier(tier: Tier): boolean {
+  return tier === "silver" || tier === "gold";
+}
+
+/** Member (tier) pricing discount on a subtotal (kobo), floored. */
+export function memberDiscountKobo(tier: Tier, subtotalKobo: number): number {
+  if (!isMemberTier(tier) || subtotalKobo <= 0) return 0;
+  return Math.floor((subtotalKobo * MEMBER_DISCOUNT_PERCENT) / 100);
+}
+
+/** Delivery fee (kobo) for an order: free for pickup or member tiers. */
+export function deliveryFeeKobo(
+  tier: Tier,
+  fulfillmentType: "delivery" | "pickup",
+): number {
+  if (fulfillmentType === "pickup") return 0;
+  if (isMemberTier(tier)) return 0;
+  return DELIVERY_FEE_KOBO;
+}

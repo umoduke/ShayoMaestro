@@ -22,9 +22,15 @@ export const ordersTable = pgTable("orders", {
   deliveryState: text("delivery_state"),
   items: jsonb("items").notNull().$type<OrderLineItem[]>(),
   subtotalKobo: integer("subtotal_kobo").notNull(),
+  // Promo-code discount (kobo). Kept as `discount_kobo` for backward compat.
   discountKobo: integer("discount_kobo").notNull().default(0),
+  // Tier (member) pricing discount applied for Silver/Gold customers (kobo).
+  memberDiscountKobo: integer("member_discount_kobo").notNull().default(0),
+  // Delivery fee charged on this order (kobo); 0 for pickup or members.
+  deliveryFeeKobo: integer("delivery_fee_kobo").notNull().default(0),
   totalKobo: integer("total_kobo").notNull(),
   promoCode: text("promo_code"),
+  promoCodeId: uuid("promo_code_id"),
   fulfillmentType: text("fulfillment_type").notNull().default("delivery"),
   paymentMethod: text("payment_method").notNull().default("paystack"),
   paymentStatus: text("payment_status").notNull().default("pending"),

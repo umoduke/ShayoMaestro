@@ -211,6 +211,31 @@ export default function AdminDashboard() {
           </Pressable>
 
           <Pressable
+            onPress={() => router.push("/admin/promos" as any)}
+            style={[
+              styles.actionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: colors.radius,
+              },
+            ]}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: "#e6781722" }]}>
+              <Feather name="tag" size={22} color="#e67817" />
+            </View>
+            <View style={styles.actionText}>
+              <Text style={[styles.actionTitle, { color: colors.foreground }]}>
+                Promo Codes
+              </Text>
+              <Text style={[styles.actionSub, { color: colors.mutedForeground }]}>
+                Create and track discount codes
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+
+          <Pressable
             onPress={() => router.push("/admin/admins" as any)}
             style={[
               styles.actionCard,

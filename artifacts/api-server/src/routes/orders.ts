@@ -6,13 +6,22 @@ import {
   productsTable,
   transactionsTable,
   usersTable,
+  promoCodesTable,
+  promoRedemptionsTable,
   type OrderLineItem,
 } from "@workspace/db";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { notifyOrderStatus } from "../lib/notify";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { getTokenPayload } from "../lib/auth";
+import {
+  computeTier,
+  deliveryFeeKobo,
+  memberDiscountKobo,
+  type Tier,
+} from "../lib/loyalty";
+import { evaluatePromo } from "../lib/promoEngine";
 
 const router: IRouter = Router();
 
@@ -74,35 +83,153 @@ router.post("/orders", async (req, res) => {
         ? "pickup"
         : "delivery";
 
-    const requestedDiscountNaira = Math.max(0, Math.floor(Number(body.discount ?? 0)));
-    const discountNaira = Math.min(requestedDiscountNaira, subtotalNaira);
     const subtotalKobo = subtotalNaira * 100;
-    const discountKobo = discountNaira * 100;
-    const totalKobo = Math.max(subtotalKobo - discountKobo, 0);
+    const customerEmail = String(body.customerEmail ?? "").trim().toLowerCase();
 
-    // Link the order to a customer account when the request carries a valid
-    // user session token. Guest checkout (no/invalid token) leaves userId null.
+    // Resolve the customer's account + tier. The server is AUTHORITATIVE for
+    // all pricing — the client's `discount` field is ignored entirely. Member
+    // pricing (5% for Silver/Gold), the delivery fee, and any promo discount
+    // are all recomputed here from trusted server state.
     let userId: string | null = null;
+    let tier: Tier = "bronze";
     const payload = getTokenPayload(req.headers.authorization);
     if (payload?.sub) {
       const [u] = await db
-        .select({ id: usersTable.id })
+        .select({ id: usersTable.id, totalSpendKobo: usersTable.totalSpendKobo })
         .from(usersTable)
         .where(eq(usersTable.id, payload.sub))
         .limit(1);
-      if (u) userId = u.id;
+      if (u) {
+        userId = u.id;
+        tier = computeTier(u.totalSpendKobo);
+      }
     }
 
-    // Write the order and its normalized line items atomically — a partial
-    // failure must never leave an order persisted without its order_items.
+    const baseMemberDiscount = memberDiscountKobo(tier, subtotalKobo);
+    const delivery = deliveryFeeKobo(tier, fulfillmentType);
+    const requestedPromoCode = body.promoCode
+      ? String(body.promoCode).trim().toUpperCase()
+      : "";
+
+    // Write the order, its line items, and any promo redemption atomically — a
+    // partial failure must never leave an order without items, nor a redemption
+    // without its order. Promo claiming happens inside the tx so concurrent
+    // checkouts cannot push a code past its usage limits.
+    let promoNote: { applied: boolean; message: string | null } = {
+      applied: false,
+      message: null,
+    };
+
     const order = await db.transaction(async (tx) => {
+      let memberDiscount = baseMemberDiscount;
+      let promoDiscount = 0;
+      let promoCodeId: string | null = null;
+      let promoCodeStr: string | null = null;
+
+      if (requestedPromoCode) {
+        // Lock the promo row for the duration of this transaction. Concurrent
+        // checkouts redeeming the SAME code now serialize here, so the per-user
+        // count-then-insert below cannot race two redemptions past
+        // `perUserLimit` (and the global `maxUses` claim is likewise serialized).
+        const [code] = await tx
+          .select()
+          .from(promoCodesTable)
+          .where(eq(promoCodesTable.code, requestedPromoCode))
+          .limit(1)
+          .for("update");
+
+        if (!code) {
+          promoNote = { applied: false, message: "Promo code is not valid." };
+        } else {
+          // Count this customer's prior redemptions (by user id OR email).
+          const idClauses = [];
+          if (userId) idClauses.push(eq(promoRedemptionsTable.userId, userId));
+          if (customerEmail)
+            idClauses.push(eq(promoRedemptionsTable.email, customerEmail));
+          let used = 0;
+          if (idClauses.length > 0) {
+            const [row] = await tx
+              .select({ n: sql<number>`count(*)::int` })
+              .from(promoRedemptionsTable)
+              .where(
+                and(
+                  eq(promoRedemptionsTable.promoCodeId, code.id),
+                  or(...idClauses),
+                ),
+              );
+            used = row?.n ?? 0;
+          }
+
+          const ev = evaluatePromo({
+            code,
+            subtotalKobo,
+            tier,
+            redemptionCount: used,
+          });
+
+          // Decide whether the promo applies BEFORE claiming a usage slot, so
+          // the stacking rule can't increment usesCount without a redemption.
+          const willApply =
+            ev.ok && (code.stackable || ev.discountKobo > memberDiscount);
+
+          if (ev.ok && willApply) {
+            // Atomically claim a global usage slot. If maxUses was hit by a
+            // concurrent order, this returns no row and the promo is skipped.
+            const claimed = await tx
+              .update(promoCodesTable)
+              .set({
+                usesCount: sql`${promoCodesTable.usesCount} + 1`,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(promoCodesTable.id, code.id),
+                  eq(promoCodesTable.active, true),
+                  sql`(${promoCodesTable.maxUses} is null or ${promoCodesTable.usesCount} < ${promoCodesTable.maxUses})`,
+                ),
+              )
+              .returning({ id: promoCodesTable.id });
+
+            if (claimed.length > 0) {
+              promoDiscount = ev.discountKobo;
+              promoCodeId = code.id;
+              promoCodeStr = code.code;
+              // Non-stackable winning promo replaces member pricing.
+              if (!code.stackable) memberDiscount = 0;
+              promoNote = { applied: true, message: null };
+            } else {
+              promoNote = {
+                applied: false,
+                message: "This code has reached its redemption limit.",
+              };
+            }
+          } else {
+            promoNote = {
+              applied: false,
+              message:
+                ev.message ??
+                "Promo code can't be combined with your member pricing.",
+            };
+          }
+        }
+      }
+
+      // Clamp the combined discount so it never exceeds the subtotal.
+      let totalDiscount = memberDiscount + promoDiscount;
+      if (totalDiscount > subtotalKobo) {
+        promoDiscount = Math.min(promoDiscount, subtotalKobo);
+        memberDiscount = subtotalKobo - promoDiscount;
+        totalDiscount = subtotalKobo;
+      }
+      const totalKobo = subtotalKobo - totalDiscount + delivery;
+
       const [created] = await tx
         .insert(ordersTable)
         .values({
           reference,
           userId,
           customerName: String(body.customerName ?? "").trim(),
-          customerEmail: String(body.customerEmail ?? "").trim().toLowerCase(),
+          customerEmail,
           customerPhone: String(body.customerPhone ?? "").trim(),
           deliveryAddress: String(body.deliveryAddress ?? "").trim(),
           deliveryCity: body.deliveryCity ? String(body.deliveryCity) : null,
@@ -110,9 +237,12 @@ router.post("/orders", async (req, res) => {
           fulfillmentType,
           items,
           subtotalKobo,
-          discountKobo,
+          discountKobo: promoDiscount,
+          memberDiscountKobo: memberDiscount,
+          deliveryFeeKobo: delivery,
           totalKobo,
-          promoCode: body.promoCode ? String(body.promoCode) : null,
+          promoCode: promoCodeStr,
+          promoCodeId,
           paymentMethod: String(body.paymentMethod ?? "paystack"),
           notes: body.notes ? String(body.notes) : null,
         })
@@ -135,10 +265,22 @@ router.post("/orders", async (req, res) => {
         }))
       );
 
+      // Record the redemption now that the order exists. We already claimed the
+      // usage slot above; this row is what enforces the per-user limit later.
+      if (promoCodeId && promoDiscount > 0) {
+        await tx.insert(promoRedemptionsTable).values({
+          promoCodeId,
+          userId,
+          orderId: created.id,
+          email: customerEmail || null,
+          discountKobo: promoDiscount,
+        });
+      }
+
       return created;
     });
 
-    return res.json({ order });
+    return res.json({ order, promo: promoNote });
   } catch (err) {
     logger.error({ err }, "Failed to create order");
     return res.status(500).json({ error: "Failed to create order" });

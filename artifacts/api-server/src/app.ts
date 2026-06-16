@@ -51,9 +51,20 @@ const authLimiter = rateLimit({
   message: { error: "Too many requests, please try again later" },
 });
 
+// Public promo validation fans out to the DB on every keystroke-driven submit;
+// cap it to discourage brute-force discovery of valid codes.
+const promoValidateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many attempts, please try again later" },
+});
+
 app.use("/api/auth/admin-login", adminLoginLimiter);
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/signup", authLimiter);
+app.use("/api/promos/validate", promoValidateLimiter);
 
 app.use("/api", router);
 
