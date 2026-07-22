@@ -1,0 +1,66 @@
+name: Deploy API to Azure TST
+
+on:
+  push:
+    branches: [tst]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-tst
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: asl-api
+  RESOURCE_GROUP: rg-asl-tst
+  WEBAPP_NAME: app-asl-api-tst
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and push image to ACR
+        run: |
+          az acr build \
+            --registry ${{ secrets.ACR_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:tst-${{ github.sha }} \
+            --image ${{ env.IMAGE_NAME }}:tst-latest \
+            --file deploy/azure/Dockerfile \
+            .
+
+      - name: Apply database schema
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --filter @workspace/db...
+          pnpm --filter @workspace/db run push -- --force
+        env:
+          DATABASE_URL: ${{ secrets.TST_DATABASE_URL }}
+
+      - name: Deploy new image to App Service
+        run: |
+          az webapp config container set \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.WEBAPP_NAME }} \
+            --container-image-name ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:tst-${{ github.sha }}
+          az webapp restart \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.WEBAPP_NAME }}
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf "https://${{ env.WEBAPP_NAME }}.azurewebsites.net/api/healthz"; then
+              echo "Healthy"; exit 0
+            fi
+            sleep 10
+          done
+          echo "Health check never passed"; exit 1

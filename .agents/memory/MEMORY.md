@@ -1,4 +1,5 @@
 - [Expo object storage](expo-object-storage.md) — admin photo upload wired by hand (separate api-server+Expo); relative servingPath imageUri, public route scoped to uploads/ + image/* only.
+- [Drizzle peer-variant split](drizzle-peer-variant-split.md) — installing otel-dependent packages can fork drizzle-orm peer variants; row types collapse to {}. Fix: root pnpm install, not casts.
 - [Promo redemption per-user race](promo-redemption-race.md) — per-user limits need a FOR UPDATE lock on the code row; a conditional usesCount UPDATE only guards the global maxUses, not count-then-insert per-user.
 - [Per-user AsyncStorage hydration](per-user-asyncstorage-hydration.md) — re-keying a context's persisted state per user: hydratedKey ref gates persistence + pendingAdds buffer avoids clobber/event-loss on switch.
 - [Loyalty accrual idempotency](loyalty-accrual-idempotency.md) — once-only point/spend/tier accrual on payment confirm needs conditional UPDATE...WHERE != 'paid' + .returning() + user-row FOR UPDATE, never a pre-read guard.

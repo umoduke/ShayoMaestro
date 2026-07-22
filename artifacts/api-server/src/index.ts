@@ -1,27 +1,24 @@
-import app from "./app";
-import { logger } from "./lib/logger";
-import { seedProductsIfEmpty } from "./lib/seed";
-
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+// Telemetry must start before any application modules (express, pg, http)
+// are loaded so Application Insights can patch them for auto-instrumentation.
+// The app itself is therefore imported dynamically in ./main.
+if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
+  try {
+    const appInsights = (await import("applicationinsights")).default;
+    appInsights
+      .setup()
+      .setAutoCollectConsole(false)
+      .setAutoCollectExceptions(true)
+      .setAutoCollectPerformance(true, true)
+      .setAutoCollectRequests(true)
+      .setAutoCollectDependencies(true)
+      .setSendLiveMetrics(true)
+      .start();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("Failed to initialize Application Insights", err);
   }
+}
 
-  logger.info({ port }, "Server listening");
-  void seedProductsIfEmpty();
-});
+await import("./main");
+
+export {};

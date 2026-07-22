@@ -88,6 +88,17 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Collects email, calls `POST /orders` (server prices the cart), then `POST /payments/initialize`, opens Paystack URL via `expo-web-browser`, calls `GET /payments/verify/:ref` on return, navigates to `/order/[id]`
 - Admin Transactions screen (`/admin/transactions`) shows stats + per-tx audit details
 
+## Environments (DEV / TST / PRD)
+
+- **DEV** = this Replit workspace (dev DB, Paystack TEST keys).
+- **TST / PRD** = Azure App Service (Linux containers). Full kit in `deploy/azure/`:
+  - `deploy/azure/Dockerfile` — multi-stage pnpm build of the API server (uses `pnpm deploy --legacy` to prune; dist bundle + node_modules for esbuild externals).
+  - `deploy/azure/provision.sh <tst|prd>` — az CLI provisioning: resource group, shared ACR, App Service (HTTPS-only, health check `/api/healthz`, managed-identity ACR pull), PostgreSQL Flexible Server (public access locked to the web app's outbound IPs only), Log Analytics + Application Insights, email metric alerts (5xx, response time, health).
+  - `.github/workflows/deploy-{tst,prd}.yml` — push to `tst`/`prd` branch → `az acr build` → drizzle push → deploy container → smoke test. PRD targets a GitHub `production` environment (add required reviewers for manual approval).
+  - `deploy/azure/README.md` — full setup checklist (GitHub secrets, remaining app settings, Expo `EXPO_PUBLIC_API_URL` per env).
+- **Monitoring hook**: `src/index.ts` starts Application Insights BEFORE dynamically importing `./main` (so express/pg get patched) — only when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set; a no-op on Replit. `applicationinsights` is an esbuild external.
+- **Known Azure gap**: Replit object storage (admin photo upload + `/api/storage/*`) doesn't work off-Replit; port to Azure Blob Storage if needed (documented in the README).
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
