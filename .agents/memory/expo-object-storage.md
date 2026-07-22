@@ -29,3 +29,12 @@ so an unscoped public GET could expose anything written there. The route is rest
 the `uploads/` prefix (no `..`) and to `image/*` content. Upload issuance is admin-only.
 **How to apply:** if you ever store non-public objects in that dir, switch to ACL
 enforcement (`canAccessObjectEntity`) instead of relying on prefix scoping.
+
+## Update: storage is now provider-abstracted
+Photo storage is selected at runtime by env: Replit GCS sidecar when
+`AZURE_STORAGE_CONNECTION_STRING` is unset, Azure Blob Storage when set.
+Key portability lesson: keep the serving path format identical across backends
+(`/api/storage/objects/uploads/<uuid>`) so stored imageUri values never need
+migration, and return provider-specific `uploadHeaders` from the upload
+endpoint (Azure PUTs require `x-ms-blob-type: BlockBlob`; GCS needs none) so
+clients stay backend-agnostic.

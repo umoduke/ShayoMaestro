@@ -97,7 +97,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
   - `.github/workflows/deploy-{tst,prd}.yml` — push to `tst`/`prd` branch → `az acr build` → drizzle push → deploy container → smoke test. PRD targets a GitHub `production` environment (add required reviewers for manual approval).
   - `deploy/azure/README.md` — full setup checklist (GitHub secrets, remaining app settings, Expo `EXPO_PUBLIC_API_URL` per env).
 - **Monitoring hook**: `src/index.ts` starts Application Insights BEFORE dynamically importing `./main` (so express/pg get patched) — only when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set; a no-op on Replit. `applicationinsights` is an esbuild external.
-- **Known Azure gap**: Replit object storage (admin photo upload + `/api/storage/*`) doesn't work off-Replit; port to Azure Blob Storage if needed (documented in the README).
+- **Storage is environment-aware**: `lib/storageProvider.ts` selects the photo-upload backend — Replit object storage (GCS sidecar) when `AZURE_STORAGE_CONNECTION_STRING` is unset (DEV), Azure Blob Storage when set (TST/PRD; private `product-images` container, SAS upload URLs, same `/api/storage/objects/uploads/<uuid>` serving paths). Upload responses include optional `uploadHeaders` the client must send on the PUT (Azure needs `x-ms-blob-type: BlockBlob`); `uploadProductImage()` spreads them. Provision script creates the storage account + CORS. Images do not sync between environments.
 
 ## Key Commands
 

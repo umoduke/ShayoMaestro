@@ -23,6 +23,7 @@ WEBAPP="app-${APP}-api-${ENV}"                  # must be globally unique; chang
 PG_SERVER="pg-${APP}-${ENV}"                    # must be globally unique
 PG_DB="asl"
 PG_ADMIN="asladmin"
+STORAGE_ACCT="st${APP}${ENV}img"                # must be globally unique, lowercase alphanumeric
 LOG_WS="log-${APP}-${ENV}"
 APPINSIGHTS="appi-${APP}-${ENV}"
 ALERT_EMAIL="${ALERT_EMAIL:?Set ALERT_EMAIL=you@example.com}"
@@ -56,6 +57,17 @@ az postgres flexible-server create -g "$RG" -n "$PG_SERVER" -l "$LOCATION" \
   --database-name "$PG_DB" --public-access none -o none
 DATABASE_URL="postgresql://${PG_ADMIN}:${PG_PASSWORD}@${PG_SERVER}.postgres.database.azure.com:5432/${PG_DB}?sslmode=require"
 
+echo "==> Storage account for product images (private container, SAS uploads)"
+az storage account create -g "$RG" -n "$STORAGE_ACCT" -l "$LOCATION" \
+  --sku Standard_LRS --kind StorageV2 --min-tls-version TLS1_2 \
+  --allow-blob-public-access false -o none
+STORAGE_CONN=$(az storage account show-connection-string -g "$RG" -n "$STORAGE_ACCT" --query connectionString -o tsv)
+# CORS so browser-based admin uploads can PUT directly to blob storage
+az storage cors add --account-name "$STORAGE_ACCT" --connection-string "$STORAGE_CONN" \
+  --services b --methods PUT OPTIONS --origins '*' --allowed-headers '*' \
+  --exposed-headers '*' --max-age 3600 -o none \
+  || echo "WARNING: CORS setup failed — browser-based admin uploads will not work until CORS is added manually (mobile app uploads are unaffected)."
+
 echo "==> App Service plan + Web App (Linux container)"
 az appservice plan create -g "$RG" -n "$PLAN" --is-linux --sku "$PLAN_SKU" -o none
 az webapp create -g "$RG" -n "$WEBAPP" --plan "$PLAN" \
@@ -86,6 +98,8 @@ az webapp config appsettings set -g "$RG" -n "$WEBAPP" -o none --settings \
   DATABASE_URL="$DATABASE_URL" \
   SESSION_SECRET="$SESSION_SECRET_VALUE" \
   APPLICATIONINSIGHTS_CONNECTION_STRING="$AI_CONN" \
+  AZURE_STORAGE_CONNECTION_STRING="$STORAGE_CONN" \
+  AZURE_STORAGE_CONTAINER="product-images" \
   LOG_LEVEL=info
 
 echo "==> Health check + always-on + HTTPS only"

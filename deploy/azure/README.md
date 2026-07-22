@@ -102,11 +102,12 @@ EXPO_PUBLIC_API_URL=https://app-asl-api-prd.azurewebsites.net   # PRD build
 
 ## Known gaps / caveats
 
-- **Product photo uploads** use Replit object storage (Google Cloud Storage via
-  a Replit-specific sidecar). This does NOT work on Azure — on TST/PRD, the
-  admin "Upload Photo" button and `/api/storage/*` routes will fail. Options:
-  keep uploading photos from DEV, use public image URLs, or port storage to
-  Azure Blob Storage (a follow-up task).
+- **Product photo uploads are environment-specific.** The server picks the
+  storage backend automatically: Replit object storage on DEV, **Azure Blob
+  Storage** on TST/PRD (when `AZURE_STORAGE_CONNECTION_STRING` is set — the
+  provision script creates the storage account, private `product-images`
+  container, and app settings). Uploaded images do NOT sync between
+  environments — a photo uploaded on TST lives in TST's storage account only.
 - **Schema deploys use `drizzle-kit push`** (same as DEV). It is applied
   automatically by CI before each deploy. For destructive changes (dropping
   columns), review carefully before merging to `prd`.

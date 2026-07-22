@@ -1,32 +1,32 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { Readable } from "stream";
-import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { getStorageProvider, ObjectNotFoundError } from "../lib/storageProvider";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
-// Object storage (App Storage) routes for admin-uploaded product photos.
-// Built on the Replit object-storage integration: the GCS client wrapper lives
-// in lib/objectStorage.ts (sidecar-authenticated — do not modify).
+// Object storage routes for admin-uploaded product photos.
+// The backing store is environment-dependent (lib/storageProvider.ts):
+//   - Replit object storage on DEV (GCS via sidecar)
+//   - Azure Blob Storage on TST/PRD (AZURE_STORAGE_CONNECTION_STRING set)
 //
 // Flow: admin requests a presigned upload URL (admin-only), the device PUTs the
-// image bytes directly to storage, then stores the returned `servingPath` as the
-// product's imageUri. Catalog images are public, so the serve route is open.
+// image bytes directly to storage (including any provider-required
+// uploadHeaders), then stores the returned `servingPath` as the product's
+// imageUri. Catalog images are public, so the serve route is open.
 const router: IRouter = Router();
-const objectStorageService = new ObjectStorageService();
 
 /**
  * POST /api/storage/upload  (admin only)
  *
  * Returns a presigned URL the client uploads the file bytes to directly, plus
- * the portable `servingPath` to persist as the product image.
+ * the portable `servingPath` to persist as the product image and any
+ * `uploadHeaders` the PUT must include.
  */
 router.post(
   "/storage/upload",
   requireAdmin,
   async (req: Request, res: Response) => {
     try {
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-      res.json({ uploadURL, objectPath, servingPath: `/api/storage${objectPath}` });
+      const target = await getStorageProvider().getUploadTarget();
+      res.json(target);
     } catch (error) {
       req.log.error({ err: error }, "Error generating upload URL");
       res.status(500).json({ error: "Failed to generate upload URL" });
@@ -39,9 +39,10 @@ router.post(
  *
  * Serves uploaded product images. Catalog photos are not sensitive, so there is
  * no auth/ACL check here. To keep this open route from ever exposing anything
- * else in the private object dir, it is scoped two ways:
+ * else, it is scoped two ways:
  *   1. Path must be under the `uploads/` product-image namespace (no traversal).
- *   2. Only image/* content is served; anything else returns 404.
+ *   2. Only image/* content is served; anything else returns 404 (enforced in
+ *      the provider).
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
@@ -56,28 +57,15 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       return;
     }
 
-    const objectPath = `/objects/${wildcardPath}`;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+    const served = await getStorageProvider().serveObject(wildcardPath);
 
-    const response = await objectStorageService.downloadObject(objectFile);
-
-    const contentType = response.headers.get("content-type") ?? "";
-    if (!contentType.startsWith("image/")) {
-      res.status(404).json({ error: "Object not found" });
-      return;
+    res.status(200);
+    res.setHeader("Content-Type", served.contentType);
+    res.setHeader("Cache-Control", served.cacheControl);
+    if (served.contentLength !== undefined) {
+      res.setHeader("Content-Length", String(served.contentLength));
     }
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(
-        response.body as ReadableStream<Uint8Array>,
-      );
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
+    served.body.pipe(res);
   } catch (error) {
     if (error instanceof ObjectNotFoundError) {
       req.log.warn({ err: error }, "Object not found");

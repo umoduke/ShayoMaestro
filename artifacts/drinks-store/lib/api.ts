@@ -44,10 +44,10 @@ export async function uploadProductImage(
   localUri: string,
   contentType?: string,
 ): Promise<string> {
-  const { uploadURL, servingPath } = await request<{
+  const { uploadURL, servingPath, uploadHeaders } = await request<{
     uploadURL: string;
-    objectPath: string;
     servingPath: string;
+    uploadHeaders?: Record<string, string>;
   }>("/api/storage/upload", { method: "POST" });
 
   const type = contentType || "image/jpeg";
@@ -57,7 +57,7 @@ export async function uploadProductImage(
     const put = await fetch(uploadURL, {
       method: "PUT",
       body: blob,
-      headers: { "Content-Type": blob.type || type },
+      headers: { "Content-Type": blob.type || type, ...uploadHeaders },
     });
     if (!put.ok) throw new Error(`Upload failed (${put.status})`);
   } else {
@@ -67,7 +67,7 @@ export async function uploadProductImage(
     const put = await expoFetch(uploadURL, {
       method: "PUT",
       body: file,
-      headers: { "Content-Type": type },
+      headers: { "Content-Type": type, ...uploadHeaders },
     });
     if (!put.ok) throw new Error(`Upload failed (${put.status})`);
   }
