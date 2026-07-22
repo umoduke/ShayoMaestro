@@ -34,6 +34,24 @@ PG_SKU=$([[ "$ENV" == "prd" ]] && echo "Standard_B2s" || echo "Standard_B1ms")
 PG_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=')"
 SESSION_SECRET_VALUE="$(openssl rand -hex 32)"
 
+echo "==> Registering Azure resource providers (no-op if already registered)"
+for ns in Microsoft.ContainerRegistry Microsoft.Web Microsoft.DBforPostgreSQL \
+          Microsoft.Storage Microsoft.OperationalInsights Microsoft.Insights \
+          Microsoft.AlertsManagement; do
+  state=$(az provider show -n "$ns" --query registrationState -o tsv 2>/dev/null || echo "NotRegistered")
+  if [[ "$state" != "Registered" ]]; then
+    az provider register --namespace "$ns" -o none
+  fi
+done
+for ns in Microsoft.ContainerRegistry Microsoft.Web Microsoft.DBforPostgreSQL \
+          Microsoft.Storage Microsoft.OperationalInsights Microsoft.Insights \
+          Microsoft.AlertsManagement; do
+  until [[ "$(az provider show -n "$ns" --query registrationState -o tsv)" == "Registered" ]]; do
+    echo "    waiting for $ns registration..."
+    sleep 10
+  done
+done
+
 echo "==> Resource group"
 az group create -n "$RG" -l "$LOCATION" -o none
 
