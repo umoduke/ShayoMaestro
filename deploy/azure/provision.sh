@@ -110,8 +110,8 @@ echo "==> Database firewall: allow only this web app's outbound IPs"
 OUTBOUND_IPS=$(az webapp show -g "$RG" -n "$WEBAPP" --query possibleOutboundIpAddresses -o tsv | tr ',' ' ')
 i=0
 for ip in $OUTBOUND_IPS; do
-  az postgres flexible-server firewall-rule create -g "$RG" -n "$PG_SERVER" \
-    --rule-name "webapp-${i}" --start-ip-address "$ip" --end-ip-address "$ip" -o none
+  az postgres flexible-server firewall-rule create -g "$RG" --server-name "$PG_SERVER" \
+    --name "webapp-${i}" --start-ip-address "$ip" --end-ip-address "$ip" -o none
   i=$((i+1))
 done
 
