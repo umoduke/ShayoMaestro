@@ -72,7 +72,8 @@ echo "==> PostgreSQL Flexible Server (public network enabled, NO firewall rules 
 az postgres flexible-server create -g "$RG" -n "$PG_SERVER" -l "$LOCATION" \
   --admin-user "$PG_ADMIN" --admin-password "$PG_PASSWORD" \
   --sku-name "$PG_SKU" --tier Burstable --storage-size 32 --version 16 \
-  --database-name "$PG_DB" --public-access none -o none
+  --public-access none -o none
+az postgres flexible-server db create -g "$RG" -s "$PG_SERVER" -d "$PG_DB" -o none
 DATABASE_URL="postgresql://${PG_ADMIN}:${PG_PASSWORD}@${PG_SERVER}.postgres.database.azure.com:5432/${PG_DB}?sslmode=require"
 
 echo "==> Storage account for product images (private container, SAS uploads)"
