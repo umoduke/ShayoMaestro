@@ -107,6 +107,7 @@ az webapp config set -g "$RG" -n "$WEBAPP" --generic-configurations '{"acrUseMan
 
 echo "==> Database firewall: allow only this web app's outbound IPs"
 # Note: outbound IPs can change if the plan is scaled/moved — re-run this block if DB connections fail.
+az postgres flexible-server update -g "$RG" -n "$PG_SERVER" --public-access Enabled -o none
 OUTBOUND_IPS=$(az webapp show -g "$RG" -n "$WEBAPP" --query possibleOutboundIpAddresses -o tsv | tr ',' ' ')
 i=0
 for ip in $OUTBOUND_IPS; do
