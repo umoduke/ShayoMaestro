@@ -7,9 +7,15 @@ function getBaseUrl(): string {
     }
     return "";
   }
+  // Full base URL wins (e.g. https://app-asl-api-tst.azurewebsites.net for
+  // TST/PRD builds); otherwise fall back to the Replit dev domain.
+  const apiBase = process.env.EXPO_PUBLIC_API_URL;
+  if (apiBase) {
+    return apiBase.replace(/\/+$/, "");
+  }
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (!domain) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+    throw new Error("EXPO_PUBLIC_API_URL or EXPO_PUBLIC_DOMAIN must be set");
   }
   return `https://${domain}`;
 }
