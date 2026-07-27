@@ -159,3 +159,7 @@ overrides:
   picomatch: "^4.0.4"
   brace-expansion: "^2.0.3"
   yaml: "^2.8.3"
+
+allowBuilds:
+  esbuild: false
+  protobufjs: false
