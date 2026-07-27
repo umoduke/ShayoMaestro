@@ -41,7 +41,7 @@ jobs:
         run: |
           corepack enable
           pnpm install --frozen-lockfile --filter @workspace/db...
-          pnpm --filter @workspace/db run push -- --force
+          pnpm --filter @workspace/db run push:force
         env:
           DATABASE_URL: ${{ secrets.TST_DATABASE_URL }}
 
